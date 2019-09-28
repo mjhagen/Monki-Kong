@@ -1,7 +1,8 @@
 #pragma bss-name(push, "ZEROPAGE")
 
 // LIVES:
-#define START_LIVES     0x34
+#define START_LIVES     0x32
+#define START_SCORE     0x30
 #define ZERO_LIVES      0x30
 
 // COORDINATES:
@@ -70,7 +71,7 @@ unsigned char pad1;
 unsigned char pad1_new;
 
 unsigned char lives=START_LIVES;
-unsigned char score=0x30;
+unsigned char score=START_SCORE;
 
 // GLOBAL X/Ys
 unsigned char monki_x=LEFT_POLE;
@@ -80,8 +81,8 @@ unsigned int scroll_y;
 
 // POLES
 struct pole {
-   int   y;
-   int   height;
+  int y;
+  int height;
 };
 
 struct pole poles[64];
@@ -89,6 +90,21 @@ struct pole poles[64];
 struct pole current_pole;
 struct pole current_left_pole;
 struct pole current_right_pole;
+
+// OBJECTS
+struct object {
+  int x;
+  int y;
+  int type;
+  int grabbed;
+};
+
+struct object objects[64];
+
+unsigned int object_nr;
+unsigned int active_object;
+// unsigned char spr_x[64];
+// unsigned char spr_y[64];
 
 // TEMPS
 unsigned char temp1;
@@ -98,12 +114,6 @@ unsigned int y;
 unsigned int i;
 unsigned int t;
 unsigned int l;
-
-// OBJECTS
-unsigned int object_nr;
-unsigned int active_object;
-unsigned char spr_x[64];
-unsigned char spr_y[64];
 
 //
 unsigned int game_mode=TITLE;
@@ -189,7 +199,7 @@ const unsigned char lives_text[]={
 // 2. greens
 // 3. yellows
 
-const unsigned char objects[10][2]={
+const unsigned char object_types[10][2]={
   { 0x90, 0x01 }, // 1up
   { 0x91, 0x01 }, // Adam
   { 0xA0, 0x01 }, // casette

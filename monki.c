@@ -51,6 +51,8 @@ void startGame( void ) {
   clear_bg();
   pal_fade_to(4,0);
   set_scroll_x( 0xFF );
+  lives = START_LIVES;
+  score = START_SCORE;
   delay(10);
   pal_fade_to(0,4);
   setupObjects();
@@ -65,7 +67,7 @@ void runGame( void ) {
   updateMonkiState();
   drawScoreboard();
   drawSprites();
-  // gray_line();
+  gray_line();
 }
 
 void gameover( void ) {
@@ -85,13 +87,16 @@ void pauseGame( void ) {
 // screen elements
 void setupObjects( void ) {
   for ( i = 0; i < 64; ++i ){
-    spr_x[ i ] = i % 2
-      ? LEFT_POLE - 8
-      : RIGHT_POLE + 16;
-    spr_y[ i ] = randRange( MONKI_TOP + 32, MONKI_BOTTOM - 32 );
+    // generate random object:
+    objects[ i ].grabbed  = FALSE;
+    objects[ i ].x        = i % 2
+                              ? LEFT_POLE - 8
+                              : RIGHT_POLE + 16;
+    objects[ i ].y        = randRange( MONKI_TOP + 32, MONKI_BOTTOM - 32 );
 
-    poles[ i ].height = randRange( 8, 24 );
-    poles[ i ].y = 0;
+    // generate random pole:
+    poles[ i ].height     = randRange( 8, 24 );
+    poles[ i ].y          = 0;
   }
 }
 
@@ -101,9 +106,10 @@ void drawScoreboard( void ) {
 
   oam_meta_spr( 8, 16, score_text );
 
-  if ( score > 9 ) {
-    oam_spr(56,16,score/10,0x03);
-    oam_spr(64,16,score%10,0x03);
+  if ( score > 0x39 ) {
+    temp1 = score - 0x30;
+    oam_spr(56,16,(temp1/10)+0x30,0x03);
+    oam_spr(64,16,(temp1%10)+0x30,0x03);
   } else {
     oam_spr(56,16,score,0x03);
   }
@@ -133,19 +139,25 @@ void drawPoles( void ) {
 
 void drawObjects( void ) {
   if ( game_frame % 50 == 0 ) {
-    object_nr = randRange(0, 63);
-    object_spr = randRange(0, sizeof(objects)-1);
+    object_nr = 0;
+
+    for ( i = 0; i < 64; ++i ) {
+      // object_nr = randRange(0, 63); // pick a random place
+      if ( objects[ i ].grabbed == FALSE )
+        object_nr = i;
+    }
   }
 
-  active_object = object_nr;
+  if ( object_nr > 0 ) {
+    active_object = object_nr;
 
-  x = spr_x[ object_nr ];
-  y = spr_y[ object_nr ];
+    objects[ active_object ].type = randRange( 0, sizeof( object_types ) - 1 );
 
-  temp1 = objects[ object_spr ][ 0 ];
-  temp2 = objects[ object_spr ][ 1 ];
+    temp1 = object_types[ objects[ active_object ].type ][ 0 ]; // sprite
+    temp2 = object_types[ objects[ active_object ].type ][ 1 ]; // attribute
 
-  oam_spr( x, y, temp1, temp2 );
+    oam_spr( objects[ active_object ].x, objects[ active_object ].y, temp1, temp2 );
+  }
 }
 
 void drawSprites( void ) {
@@ -235,12 +247,28 @@ void monkiMoves( int direction, int amount ){
 }
 
 void monkiGrabs( void ) {
-  if ( monki_y > ( spr_y[ active_object ] - 5 ) && monki_y < ( spr_y[ active_object ] + 5 ) ) {
+  if ( objects[ active_object ].grabbed ) return;
+
+  x = objects[ active_object ].x;
+  y = objects[ active_object ].y;
+
+  // monki on same Y as object
+  temp1 = monki_y > ( y - 5 ) && monki_y < ( y + 5 );
+
+  // monki on same pole as object
+  temp2 = ( on_left_pole  && x <= LEFT_POLE ) ||
+          ( !on_left_pole && x >= RIGHT_POLE );
+
+  // both true, hit!
+  if ( temp1 && temp2 ) {
     sfx_play(SFX_DING, 0);
-    oam_spr( spr_x[ active_object ], spr_y[ active_object ], 0x4F, 0 );
-    active_object = 0;
     score++;
+
+    oam_spr( x, y, 0x4F, 0 ); // draw hit sprite
+
     is_reaching = FALSE;
+    objects[ active_object ].grabbed = TRUE;
+    active_object = 0;
   }
 }
 
