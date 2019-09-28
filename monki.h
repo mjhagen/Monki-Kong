@@ -8,22 +8,52 @@
 #define LEFT_POLE       0x48
 #define RIGHT_POLE      0xA0
 #define MID_POINT       0x70
-#define MONKI_TOP       0x20 // TODO: should be top of pole
-#define MONKI_BOTTOM    0xE0 // TODO: should be bottom of pole
+#define MONKI_TOP       0x20 // TODO: should be top of a pole
+#define MONKI_BOTTOM    0xE0 // TODO: should be bottom of a pole
 
 // ANIMATION HINTS:
 #define MAX_MONKIFRAME  0x06 // frames in every animation
 
-// ENUMS:
-enum { TOP, RIGHT, LEFT, DOWN, UP };
-enum { SFX_JUMP, SFX_DING, SFX_NOISE };
-enum { TITLE, STARTGAME, PLAYING, GAMEOVER, PAUSE};
-enum { CLIMBING_LEFT, CLIMBING_RIGHT, JUMPING_RIGHT, JUMPING_LEFT, REACHING_LEFT, REACHING_RIGHT };
+// MOVEMENT:
+enum {
+  TOP,
+  RIGHT,
+  LEFT,
+  DOWN,
+  UP
+};
+
+// SOUND:
+enum {
+  SFX_JUMP,
+  SFX_DING,
+  SFX_NOISE
+};
+
+// SCENES:
+enum {
+  TITLE,
+  STARTGAME,
+  PLAYING,
+  GAMEOVER,
+  PAUSE
+};
+
+// ANIMATIONS:
+enum {
+  CLIMBING_LEFT,
+  CLIMBING_RIGHT,
+  JUMPING_RIGHT,
+  JUMPING_LEFT,
+  REACHING_LEFT,
+  REACHING_RIGHT
+};
 
 // TEXTS:
-const unsigned char GAMEOVER_TEXT[] =    "GAME OVER";
-const unsigned char GAME_NAME[]     =   "MONKI KONG!";
-const unsigned char PRESS_START[]   = "< press start >";
+const unsigned char GAMEOVER_TEXT[]   =    "GAME OVER";     // x=11
+const unsigned char GAMENAME_TEXT[]   =   "MONKI KONG!";    // x=10
+const unsigned char GAMEPAUSED_TEXT[] =     "PAUSED";       // x=12
+const unsigned char PRESSSTART_TEXT[] = "< press start >";  // x=8
 
 // CONSTANTS:
 const unsigned int  GAME_SPEED      = 3;
@@ -34,11 +64,7 @@ const unsigned int  ANIMATION_SPEED = 3;
 // GLOBALS
 unsigned char scoreboard_line_1[16];
 unsigned char scoreboard_line_2[16];
-unsigned char spr_x[64];
-unsigned char spr_y[64];
 unsigned char object_spr;
-unsigned char temp1;
-unsigned char temp2;
 
 unsigned char pad1;
 unsigned char pad1_new;
@@ -46,22 +72,40 @@ unsigned char pad1_new;
 unsigned char lives=START_LIVES;
 unsigned char score=0x30;
 
+// GLOBAL X/Ys
 unsigned char monki_x=LEFT_POLE;
 unsigned char monki_y=MONKI_TOP;
-
 unsigned int scroll_x;
 unsigned int scroll_y;
 
+// POLES
+struct pole {
+   int   y;
+   int   height;
+};
+
+struct pole poles[64];
+
+struct pole current_pole;
+struct pole current_left_pole;
+struct pole current_right_pole;
+
+// TEMPS
+unsigned char temp1;
+unsigned char temp2;
+unsigned int x;
+unsigned int y;
 unsigned int i;
 unsigned int t;
 unsigned int l;
-unsigned int x;
-unsigned int y;
-unsigned int address;
-unsigned int pole_length;
+
+// OBJECTS
 unsigned int object_nr;
 unsigned int active_object;
+unsigned char spr_x[64];
+unsigned char spr_y[64];
 
+//
 unsigned int game_mode=TITLE;
 unsigned int monki_state=CLIMBING_LEFT;
 
@@ -83,7 +127,8 @@ const unsigned char palette_sp[]={
 };
 
 const unsigned char palette_bg[]={
-  0x0F, 0x20, 0x10, 0x00 // black, white, light gray, gray
+  0x0F, 0x20, 0x10, 0x00, // black and grays
+  0x0F, 0x35, 0x25, 0x15 // black and pinks
 };
 
 // HERO
@@ -159,27 +204,26 @@ const unsigned char objects[10][2]={
 
 
 // PROTOTYPES
-void drawGameover( void );
-void drawHallOfFame( void );
+void titleScreen( void );
+void startGame( void );
+void runGame( void );
+void pauseGame( void );
+void gameover( void );
+
 void drawMonki( void );
-void drawObjects( void );
-void drawPoles( void );
 void drawScoreboard( void );
 void drawSprites( void );
-void drawTitleScreen( void );
+void drawPoles( void );
+void drawPole( int side );
 
-void setupObjects(void);
-void startGame(void);
-void updateMonkiState(void);
 void monkiDies( void );
-void monkiJumps( int direction );
-void monkiMoves( int direction, int amount );
-void monkiReaches( void );
 void monkiGrabs( void );
+void monkiMoves( int direction, int amount );
 
-void controllers( void );
-void movement(void);
-void scrolling(void);
-void spritezero(void);
-
-int randRange( int low, int high );
+void setupObjects( void );
+void movement( void );
+void scrolling( void );
+void updateMonkiState( void );
+void upkeep( void );
+void clear_bg( void );
+int randRange(  int low, int high );

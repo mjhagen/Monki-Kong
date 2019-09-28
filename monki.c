@@ -4,121 +4,131 @@
 #include "LIB/nesdoug.h"
 #include "monki.h"
 
+#define NES_MIRRORING 0
+
 void main( void ) {
   ppu_off();
-
   pal_bg(palette_bg);
   pal_spr(palette_sp);
-
   set_vram_buffer();
   clear_vram_buffer();
-
   ppu_on_all();
-
-  // spritezero();
-
-  ppu_wait_nmi();
 
   while( 1 ) {
     while ( game_mode == TITLE ) {
-      ppu_wait_nmi();
-
-      controllers();
-
-      clear_vram_buffer();
-      oam_clear();
-
-      drawTitleScreen();
+      titleScreen();
     }
 
     while ( game_mode == STARTGAME ) {
-      ppu_wait_nmi();
-
-      clear_vram_buffer();
-      oam_clear();
-
-      pal_fade_to(4,0);
-
-      delay(10);
-
-      pal_fade_to(0,4);
-
       startGame();
     }
 
     while ( game_mode == PLAYING ) {
-      ppu_wait_nmi();
-
-      controllers();
-
-      clear_vram_buffer();
-      oam_clear();
-
-      game_frame = get_frame_count();
-      movement();
-      scrolling();
-      updateMonkiState();
-      drawScoreboard();
-      drawSprites();
-
-      gray_line();
+      runGame();
     }
 
     while ( game_mode == PAUSE ) {
-      ppu_wait_nmi();
-
-      controllers();
-
-      clear_vram_buffer();
-      oam_clear();
-
-      // game_frame = get_frame_count();
-      // movement();
-      // scrolling();
-      // updateMonkiState();
-      drawScoreboard();
-      // drawSprites();
+      pauseGame();
     }
 
     while ( game_mode == GAMEOVER ) {
-      ppu_wait_nmi();
-
-      controllers();
-
-      clear_vram_buffer();
-      oam_clear();
-
-      drawGameover();
+      gameover();
     }
   }
 }
 
+// game modes
+void titleScreen( void ) {
+  upkeep();
+  multi_vram_buffer_horz( GAMENAME_TEXT, sizeof( GAMENAME_TEXT ), NTADR_A(10,14));
+  multi_vram_buffer_horz( PRESSSTART_TEXT, sizeof( PRESSSTART_TEXT ), NTADR_A(8,16));
+  set_scroll_x( 0x00 );
+}
+
+void startGame( void ) {
+  seed_rng();
+  upkeep();
+  clear_bg();
+  pal_fade_to(4,0);
+  set_scroll_x( 0xFF );
+  delay(10);
+  pal_fade_to(0,4);
+  setupObjects();
+  game_mode = PLAYING;
+}
+
+void runGame( void ) {
+  upkeep();
+  scrolling();
+  game_frame = get_frame_count();
+  movement();
+  updateMonkiState();
+  drawScoreboard();
+  drawSprites();
+  // gray_line();
+}
+
+void gameover( void ) {
+  upkeep();
+  multi_vram_buffer_horz(GAMEOVER_TEXT, sizeof(GAMEOVER_TEXT), NTADR_A(11,14));
+  set_scroll_x( 0x00 );
+}
+
+void pauseGame( void ) {
+  upkeep();
+  multi_vram_buffer_horz(GAMEPAUSED_TEXT, sizeof(GAMEPAUSED_TEXT), NTADR_A(12,14));
+  set_scroll_x( 0x00 );
+}
+
+
+
 // screen elements
-void drawScoreboard( void ) {
-  oam_meta_spr( 8, 8, lives_text );
-  oam_spr(56,8,lives,3);
-
-  oam_meta_spr( 8, 16, score_text );
-  if ( score > 9 ){
-    oam_spr(56,16,score/10,3);
-    oam_spr(64,16,score%10,3);
-  }else{
-    oam_spr(56,16,score,3);
-  }
-}
-
-void drawPoles( void ) {
-  multi_vram_buffer_vert(Poles[0], 26, NTADR_A(leftpole_x,3));
-  multi_vram_buffer_vert(Poles[1], 26, NTADR_A(rightpole_x,3));
-}
-
 void setupObjects( void ) {
   for ( i = 0; i < 64; ++i ){
     spr_x[ i ] = i % 2
       ? LEFT_POLE - 8
       : RIGHT_POLE + 16;
-    spr_y[ i ] = randRange( MONKI_BOTTOM - 32, MONKI_TOP + 32 );
+    spr_y[ i ] = randRange( MONKI_TOP + 32, MONKI_BOTTOM - 32 );
+
+    poles[ i ].height = randRange( 8, 24 );
+    poles[ i ].y = 0;
   }
+}
+
+void drawScoreboard( void ) {
+  oam_meta_spr( 8, 8, lives_text );
+  oam_spr( 56, 8, lives, 0x03 );
+
+  oam_meta_spr( 8, 16, score_text );
+
+  if ( score > 9 ) {
+    oam_spr(56,16,score/10,0x03);
+    oam_spr(64,16,score%10,0x03);
+  } else {
+    oam_spr(56,16,score,0x03);
+  }
+}
+
+void drawPole( int side ) {
+  if ( current_left_pole == NULL || current_left_pole.y > current_left_pole.height )
+    current_left_pole = poles[ randRange( 0, 63 ) ];
+  if ( current_right_pole == NULL || current_right_pole.y > current_right_pole.height )
+    current_right_pole = poles[ randRange( 0, 63 ) ];
+
+  vram_adr( NTADR_B( leftpole_x, current_left_pole.height - current_left_pole.y++ ) );
+  vram_put( 0x80 );
+
+  vram_adr( NTADR_B( rightpole_x, current_right_pole.height - current_right_pole.y++ ) );
+  vram_put( 0x81 );
+}
+
+void drawPoles( void ) {
+  // drawPole( LEFT );
+  // drawPole( RIGHT );
+
+  // OLD:
+  multi_vram_buffer_vert(Poles[0], 26, NTADR_B(leftpole_x,4));
+  multi_vram_buffer_vert(Poles[1], 26, NTADR_B(rightpole_x,5));
 }
 
 void drawObjects( void ) {
@@ -138,19 +148,10 @@ void drawObjects( void ) {
   oam_spr( x, y, temp1, temp2 );
 }
 
-void drawGameover( void ) {
-  multi_vram_buffer_horz(GAMEOVER_TEXT, sizeof(GAMEOVER_TEXT), NTADR_A(11,14));
-}
-
 void drawSprites( void ) {
-  drawPoles();
+  // drawPoles();
   drawMonki();
   drawObjects();
-}
-
-void drawTitleScreen( void ) {
-  multi_vram_buffer_horz(GAME_NAME, sizeof(GAME_NAME), NTADR_A(11,14));
-  multi_vram_buffer_horz(PRESS_START, sizeof(PRESS_START), NTADR_A(9,16));
 }
 
 
@@ -275,13 +276,6 @@ void monkiDies( void ) {
 
 
 // house keeping
-void startGame( void ) {
-
-  seed_rng();
-  setupObjects();
-  game_mode = PLAYING;
-}
-
 void controllers( void ) {
   pad1 = pad_poll(0); // read the first controller
   pad1_new = get_pad_new(0);
@@ -344,17 +338,30 @@ void movement( void ) {
   }
 
   if ( monki_frame >= MAX_MONKIFRAME ) monki_frame = 0;
-  if ( monki_frame < 0 ) monki_frame = MAX_MONKIFRAME - 1;
 }
 
-void scrolling(void){
-  // scroll_y = sub_scroll_y(1,scroll_y);
-  // set_scroll_y(scroll_y);
+void scrolling( void ) {
+  scroll_y = sub_scroll_y( 1, scroll_y );
+  //set_scroll_y( scroll_y );
   monkiMoves( DOWN, 1 );
+
+  if ( ( scroll_y & 15 ) == 0 ) {
+    drawPoles();
+  }
 }
 
-void spritezero(void){
+void upkeep( void ) {
+  ppu_wait_nmi();
+  controllers();
+  clear_vram_buffer();
+  oam_clear();
+}
+
+void spritezero( void ) {
   oam_spr(0x01,0x20,0xA0,0x20);
+}
+
+void clear_bg( void ) {
 }
 
 int randRange( int low, int high ){
