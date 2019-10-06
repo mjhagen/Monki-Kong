@@ -157,7 +157,7 @@ void drawScoreboard( void ) {
 
   // lives
   oam_meta_spr( 8, 16, lives_text );
-  drawNumbers( 80, 16, left_gap_y ); // lives );
+  drawNumbers( 80, 16, lives );
 
   // score
   oam_meta_spr( 8, 26, score_text );
@@ -310,12 +310,16 @@ void drawMonki( void ) {
 
 int monkiCanMove( int direction ) {
   temp1 = on_left_pole ? left_gap_y : right_gap_y;
+  temp2 = on_left_pole ? right_gap_y : left_gap_y;
 
   switch ( direction ) {
-    case UP: return monki_y <= ( temp1 + 32 );
-    case DOWN: return monki_y < ( temp1 - 8 );
-    // case RIGHT: return !on_left_pole || monki_y > ( temp1 + 8 ) && monki_y < ( temp1 - 32 );
-    // case LEFT: return on_left_pole || monki_y > ( temp1 + 8 ) && monki_y < ( temp1 - 32 );
+    case UP:
+      return monki_y < temp1 || monki_y > temp1 + 8;
+    case DOWN:
+      return monki_y > temp1 || monki_y < temp1 - 32;
+    case RIGHT:
+    case LEFT:
+      return !( monki_y > ( temp2 - 32 ) && monki_y < ( temp2 + 16 ));
   }
 
   return TRUE;
@@ -329,7 +333,9 @@ void monkiMoves( int direction, int amount ) {
       break;
 
     case DOWN:
-      if ( monki_y >= MONKI_BOTTOM ) return;
+      if ( monki_y >= MONKI_BOTTOM ) {
+        monkiDies();
+      };
       monki_y+=amount;
       break;
 
