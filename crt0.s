@@ -256,14 +256,10 @@ detectNTSC:
 	.include "LIB/nesdoug.s"
 	.include "MUSIC/famitone2.s"
 
-
-
 .segment "RODATA"
 
 music_data:
-;	.include "music.s"
-
-
+	.include "MUSIC/music.s"
 
 	.if(FT_SFX_ENABLE)
 sounds_data:

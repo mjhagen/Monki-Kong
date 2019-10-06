@@ -27,9 +27,12 @@ enum {
 
 // SOUND:
 enum {
-  SFX_JUMP,
-  SFX_DING,
-  SFX_NOISE
+  SFX_JUMP,     // 0
+  SFX_DING,     // 1
+  SFX_IMPACT,   // 2
+  SFX_1UP,      // 3
+  SFX_DEATH,    // 4
+  SFX_GAMEOVER  // 5
 };
 
 // SCENES:

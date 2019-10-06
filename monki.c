@@ -99,6 +99,7 @@ void gameover( void ) {
   upkeep();
   if ( !is_gameover ) {
     is_gameover = TRUE;
+    sfx_play( SFX_GAMEOVER, 0 );
     clear_bg();
     set_scroll_y( 0x00 );
     multi_vram_buffer_horz(GAMEOVER_TEXT, sizeof(GAMEOVER_TEXT), NTADR_A(11,14));
@@ -129,16 +130,7 @@ void setupObjects( void ) {
                               ? LEFT_POLE - 8
                               : RIGHT_POLE + 16;
     objects[ i ].y        = randRange( MONKI_TOP + 16, MONKI_BOTTOM - 16 );
-
-    // generate random pole:
-    // poles[ i ].height     = randRange( 50, 100 );
-    // poles[ i ].y          = poles[ i ].height;
-    // poles[ i ].sprite     = 0x80;
-    // poles[ i ].attr       = 0x04;
   }
-
-  // initRandomPole(LEFT);
-  // initRandomPole(RIGHT);
 }
 
 void drawScoreboard( void ) {
@@ -177,34 +169,6 @@ void drawNumbers( char x, char y, char nr ) {
   if ( nr > 99 ) oam_spr( x -= 8, y, (( nr / 100 ) % 10) + 0x30, 0x03 );
 }
 
-// void drawPoles( void ) {
-//   scroll_x = 0;
-//   x = LEFT_POLE + 8;
-
-//   // remove bottom of pole
-//   y = scroll_y + 272;
-//   ntaddr = getNametable( y );
-//   i = get_ppu_addr( ntaddr, x, y );
-//   one_vram_buffer( 0, i );
-
-//   // add new pole if current pole is done building
-//   if ( current_left_pole.y-- <= 0 ) {
-//     initRandomPole(LEFT);
-//   } else if ( current_left_pole.y <= current_left_pole.height ) {
-//     y = scroll_y - 16;
-//     ntaddr = getNametable( y );
-//     i = get_ppu_addr( ntaddr, x, y );
-//     one_vram_buffer( 0x80, i );
-//   }
-
-
-//   // add to top of pole
-//   // y = scroll_y - 16;
-//   // temp1 = ( y + 0x110) >> 8;
-//   // ntaddr = temp1 & 1 ? 0 : 2;
-//   // one_vram_buffer( 0x80, get_ppu_addr( ntaddr, LEFT_POLE+8, y ) );
-// }
-
 void drawStaticPoles( void ) {
   left_gap_y = 0x10;
   x = LEFT_POLE + 8;
@@ -225,21 +189,6 @@ void drawGaps( void ) {
   oam_spr( RIGHT_POLE, ++right_gap_y, 0x7F, 0x03 );
 }
 
-// void initRandomPole( int side ) {
-//   temp1 = sizeof( poles )-1;
-//   temp2 = randRange( 0, temp1 );
-
-//   switch ( side ) {
-//     case LEFT:
-//       current_left_pole = poles[ temp2 ];
-//       break;
-
-//     case RIGHT:
-//       current_right_pole = poles[ temp2 ];
-//       break;
-//   }
-// }
-
 void drawObjects( void ) {
   // show next object at random intervals
   if ( game_frame % 75 == 0 ) {
@@ -249,6 +198,9 @@ void drawObjects( void ) {
       if ( active_object > 63 ) active_object = 0;
     } while( objects[ active_object ].grabbed );
   }
+
+  if ( objects[ active_object ].grabbed == TRUE )
+    return;
 
   temp1 = object_types[ objects[ active_object ].type ][ 0 ]; // sprite
   temp2 = object_types[ objects[ active_object ].type ][ 1 ]; // attribute
@@ -277,7 +229,10 @@ void updateMonkiState( void ) {
       else monkiMoves( DOWN, monki_frame );
 
       // done jumping:
-      if ( monki_x < LEFT_POLE + 1 ) is_jumping = FALSE;
+      if ( monki_x < LEFT_POLE + 1 ) {
+        sfx_play( SFX_IMPACT, 0 );
+        is_jumping = FALSE;
+      }
     } else {
       // move monki over to other pole:
       if ( monki_x > 0 ) monkiMoves( LEFT, 8 );
@@ -287,7 +242,10 @@ void updateMonkiState( void ) {
       else monkiMoves( DOWN, monki_frame );
 
       // done jumping:
-      if ( monki_x > RIGHT_POLE - 1 ) is_jumping = FALSE;
+      if ( monki_x > RIGHT_POLE - 1 ) {
+        sfx_play( SFX_IMPACT, 0 );
+        is_jumping = FALSE;
+      }
     }
   } else if ( is_reaching ) {
     // tells drawMonki which animation to use:
@@ -306,23 +264,6 @@ void drawMonki( void ) {
   if ( monki_state == CLIMBING_LEFT ) monki_x = LEFT_POLE + 1;
 
   oam_meta_spr(monki_x, monki_y, monki_states[ monki_state ][ monki_frame ] );
-}
-
-int monkiCanMove( int direction ) {
-  temp1 = on_left_pole ? left_gap_y : right_gap_y;
-  temp2 = on_left_pole ? right_gap_y : left_gap_y;
-
-  switch ( direction ) {
-    case UP:
-      return monki_y < temp1 || monki_y > temp1 + 8;
-    case DOWN:
-      return monki_y > temp1 || monki_y < temp1 - 32;
-    case RIGHT:
-    case LEFT:
-      return !( monki_y > ( temp2 - 32 ) && monki_y < ( temp2 + 16 ));
-  }
-
-  return TRUE;
 }
 
 void monkiMoves( int direction, int amount ) {
@@ -388,7 +329,7 @@ void monkiReaches( void ) {
 void monkiJumps( int direction ) {
   if ( is_jumping ) return;
 
-  sfx_play(SFX_JUMP, 0);
+  sfx_play( SFX_JUMP, 0 );
 
   switch ( direction ) {
     case LEFT:
@@ -403,11 +344,11 @@ void monkiJumps( int direction ) {
 }
 
 void monkiDies( void ) {
+  sfx_play( SFX_DEATH, 0 );
   lives--;
-  monkiMoves( TOP, 0 );
-  if ( lives < ZERO_LIVES ) {
+  if ( lives < ZERO_LIVES )
     game_mode = GAMEOVER;
-  }
+  monkiMoves( TOP, 0 );
 }
 
 // house keeping
@@ -503,27 +444,6 @@ void scrolling( void ) {
   scroll_y = sub_scroll_y( 1, scroll_y );
   set_scroll_x( scroll_x );
   set_scroll_y( scroll_y );
-
-  // return;
-
-  // if ((scroll_y % 8) == 0) {
-  //   drawPoles();
-  // }
-}
-
-void spritezero( void ) {
-  oam_spr(0x01,0x20,0xA0,0x20);
-}
-
-// utility
-
-int randRange( int low, int high ){
-  return rand8() % (high + 1 - low) + low;
-}
-
-int getNametable( int coord ){
-  temp1 = ( coord + 0x110) >> 8;
-  return temp1 & 1 ? 0 : 2;
 }
 
 void clear_bg( void ) {
@@ -533,9 +453,25 @@ void clear_bg( void ) {
   ppu_on_all();
 }
 
+// utility
 
+int randRange( int low, int high ){
+  return rand8() % (high + 1 - low) + low;
+}
 
-// word nt2attraddr(word a) {
-//   return (a & 0x2c00) | 0x3c0 |
-//     ((a >> 4) & 0x38) | ((a >> 2) & 0x07);
-// }
+int monkiCanMove( int direction ) {
+  temp1 = on_left_pole ? left_gap_y : right_gap_y;
+  temp2 = on_left_pole ? right_gap_y : left_gap_y;
+
+  switch ( direction ) {
+    case UP:
+      return monki_y < temp1 || monki_y > temp1 + 8;
+    case DOWN:
+      return monki_y > temp1 || monki_y < temp1 - 32;
+    case RIGHT:
+    case LEFT:
+      return !( monki_y > ( temp2 - 32 ) && monki_y < ( temp2 + 16 ));
+  }
+
+  return TRUE;
+}
