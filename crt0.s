@@ -254,7 +254,6 @@ detectNTSC:
 
 	.include "LIB/neslib.s"
 	.include "LIB/nesdoug.s"
-  .include "LIB/monkilib.s"
 	.include "MUSIC/famitone2.s"
 
 
