@@ -59,6 +59,7 @@ void runGame( void ) {
     is_paused = FALSE;
     is_gameover = FALSE;
     clear_bg();
+    pal_col(0,0x31);
     drawStaticPoles();
   }
 
@@ -78,7 +79,7 @@ void gameover( void ) {
     music_stop();
     sfx_play( SFX_GAMEOVER, 0 );
     clear_bg();
-    pal_col(0,0x31);
+    pal_col(0,0x0F);
     multi_vram_buffer_horz(GAMEOVER_TEXT, sizeof(GAMEOVER_TEXT), NTADR_A(11,14));
   }
 
@@ -124,6 +125,7 @@ void drawScoreboard( void ) {
     pal_col(0,0x36);
     set_music_speed( 5 );
   } else {
+    pal_col(0,0x31);
     set_music_speed( 6 );
   }
 
@@ -174,13 +176,19 @@ void drawStaticPoles( void ) {
 }
 
 void drawGaps( void ) {
-  oam_spr( LEFT_POLE + 8, left_gap_y-8,  0x7F, 0x03 );
-  oam_spr( LEFT_POLE + 8, left_gap_y,    0x7F, 0x03 );
-  oam_spr( LEFT_POLE + 8, left_gap_y+8,  0x7F, 0x03 );
+  temp1 = 0x03;
 
-  oam_spr( RIGHT_POLE, right_gap_y-8, 0x7F, 0x03 );
-  oam_spr( RIGHT_POLE, right_gap_y,   0x7F, 0x03 );
-  oam_spr( RIGHT_POLE, right_gap_y+8, 0x7F, 0x03 );
+  if ( timer <= 0x3A ) {
+    temp1 = 0x01;
+  }
+
+  oam_spr( LEFT_POLE + 8, left_gap_y-8,  0x7F, temp1 );
+  oam_spr( LEFT_POLE + 8, left_gap_y,    0x7F, temp1 );
+  oam_spr( LEFT_POLE + 8, left_gap_y+8,  0x7F, temp1 );
+
+  oam_spr( RIGHT_POLE, right_gap_y-8, 0x7F, temp1 );
+  oam_spr( RIGHT_POLE, right_gap_y,   0x7F, temp1 );
+  oam_spr( RIGHT_POLE, right_gap_y+8, 0x7F, temp1 );
 }
 
 void drawObjects( void ) {
@@ -358,6 +366,8 @@ void monkiJumps( int direction ) {
 void monkiDies( void ) {
   lives--;
   monkiMoves( TOP, 0 );
+  pal_col(0,0x26);
+  delay( 10 );
 
   if ( lives < ZERO_LIVES ) {
     game_mode = GAMEOVER;
