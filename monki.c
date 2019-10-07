@@ -63,13 +63,12 @@ void runGame( void ) {
 
   movement();
   scrolling();
-
   updateMonkiState();
+
+  drawGaps();
   drawScoreboard();
   drawObjects();
   drawMonki();
-
-  gray_line();
 }
 
 void gameover( void ) {
@@ -430,8 +429,6 @@ void frame( int direction ) {
         break;
     }
 
-
-
     if ( monki_frame >= MAX_MONKIFRAME )
       monki_frame = 0;
     else if ( monki_frame < 0 )
@@ -443,7 +440,6 @@ void scrolling( void ) {
   ++left_gap_y;
   ++right_gap_y;
 
-  drawGaps();
   monkiMoves( DOWN, 1 );
 }
 
