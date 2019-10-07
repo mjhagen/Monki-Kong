@@ -15,49 +15,30 @@ void main( void ) {
   is_gameover = TRUE;
 
   while( 1 ) {
-    while ( game_mode == TITLE ) {
-      titleScreen();
-    }
+    upkeep();
 
-    while ( game_mode == STARTGAME ) {
-      startGame();
-    }
-
-    while ( game_mode == PLAYING ) {
-      runGame();
-    }
-
-    while ( game_mode == PAUSE ) {
-      pauseGame();
-    }
-
-    while ( game_mode == GAMEOVER ) {
-      gameover();
+    switch( game_mode ) {
+      case TITLE:     titleScreen();  break;
+      case STARTGAME: startGame();    break;
+      case PLAYING:   runGame();      break;
+      case PAUSE:     pauseGame();    break;
+      case GAMEOVER:  gameover();     break;
     }
   }
 }
 
 // game modes
 void titleScreen( void ) {
-  upkeep();
   if ( is_gameover ) {
     is_gameover = FALSE;
     clear_bg();
-    set_scroll_y( 0x00 );
     multi_vram_buffer_horz( GAMENAME_TEXT, sizeof( GAMENAME_TEXT ), NTADR_A(10,12) );
     multi_vram_buffer_horz( PRESSSTART_TEXT, sizeof( PRESSSTART_TEXT ), NTADR_A(10,14));
   }
 }
 
 void startGame( void ) {
-  upkeep();
-
   // reset game elements:
-  scroll_x = 0;
-  scroll_y = 0;
-  lives = START_LIVES;
-  score = START_SCORE;
-  timer = START_TIMER;
   setupObjects();
 
   pal_fade_to(4,0);
@@ -72,46 +53,41 @@ void startGame( void ) {
 
 void runGame( void ) {
   game_frame++;
-  if ( is_paused ) {
+
+  if ( is_paused || is_gameover ) {
     is_paused = FALSE;
+    is_gameover = FALSE;
     clear_bg();
+    drawStaticPoles();
   }
 
-  ppu_wait_nmi();
-  set_vram_buffer();
-  clear_vram_buffer();
+  movement();
   scrolling();
 
-  controllers();
-
-  oam_clear();
-  movement();
-  drawGaps();
   updateMonkiState();
   drawScoreboard();
   drawObjects();
   drawMonki();
 
-  // gray_line();
+  gray_line();
 }
 
 void gameover( void ) {
-  upkeep();
   if ( !is_gameover ) {
     is_gameover = TRUE;
     sfx_play( SFX_GAMEOVER, 0 );
     clear_bg();
-    set_scroll_y( 0x00 );
     multi_vram_buffer_horz(GAMEOVER_TEXT, sizeof(GAMEOVER_TEXT), NTADR_A(11,14));
+
+    oam_meta_spr( 64, 64, score_text );
+    drawNumbers( 64, 64, score );
   }
 }
 
 void pauseGame( void ) {
-  upkeep();
   if ( !is_paused ) {
     is_paused = TRUE;
     clear_bg();
-    set_scroll_y( 0x00 );
     multi_vram_buffer_horz(GAMEPAUSED_TEXT, sizeof(GAMEPAUSED_TEXT), NTADR_A(13,14));
   }
 }
@@ -119,6 +95,10 @@ void pauseGame( void ) {
 // screen elements
 void setupObjects( void ) {
   seed_rng();
+
+  lives = START_LIVES;
+  score = START_SCORE;
+  timer = START_TIMER;
 
   active_object = 0;
 
@@ -185,8 +165,13 @@ void drawStaticPoles( void ) {
 }
 
 void drawGaps( void ) {
-  oam_spr( LEFT_POLE + 8, ++left_gap_y, 0x7F, 0x03 );
-  oam_spr( RIGHT_POLE, ++right_gap_y, 0x7F, 0x03 );
+  oam_spr( LEFT_POLE + 8, left_gap_y-8,  0x7F, 0x03 );
+  oam_spr( LEFT_POLE + 8, left_gap_y,    0x7F, 0x03 );
+  oam_spr( LEFT_POLE + 8, left_gap_y+8,  0x7F, 0x03 );
+
+  oam_spr( RIGHT_POLE, right_gap_y-8, 0x7F, 0x03 );
+  oam_spr( RIGHT_POLE, right_gap_y,   0x7F, 0x03 );
+  oam_spr( RIGHT_POLE, right_gap_y+8, 0x7F, 0x03 );
 }
 
 void drawObjects( void ) {
@@ -311,8 +296,20 @@ void monkiGrabs( void ) {
 
   // both true, hit!
   if ( temp1 && temp2 ) {
-    sfx_play( SFX_DING, 0 );
-    score++;
+    switch ( objects[ active_object ].type ) {
+      case 0:
+        lives++;
+        sfx_play( SFX_1UP, 0 );
+        break;
+
+      case 1:
+        monkiDies();
+        return;
+
+      default:
+        score++;
+        sfx_play( SFX_DING, 0 );
+    }
 
     oam_spr( x, y, 0x4F, 0 ); // draw hit sprite
 
@@ -344,11 +341,15 @@ void monkiJumps( int direction ) {
 }
 
 void monkiDies( void ) {
-  sfx_play( SFX_DEATH, 0 );
   lives--;
-  if ( lives < ZERO_LIVES )
-    game_mode = GAMEOVER;
   monkiMoves( TOP, 0 );
+
+  if ( lives < ZERO_LIVES ) {
+    game_mode = GAMEOVER;
+    return;
+  }
+
+  sfx_play( SFX_DEATH, 0 );
 }
 
 // house keeping
@@ -439,11 +440,11 @@ void frame( int direction ) {
 }
 
 void scrolling( void ) {
-  monkiMoves( DOWN, 1 );
+  ++left_gap_y;
+  ++right_gap_y;
 
-  scroll_y = sub_scroll_y( 1, scroll_y );
-  set_scroll_x( scroll_x );
-  set_scroll_y( scroll_y );
+  drawGaps();
+  monkiMoves( DOWN, 1 );
 }
 
 void clear_bg( void ) {
@@ -465,12 +466,12 @@ int monkiCanMove( int direction ) {
 
   switch ( direction ) {
     case UP:
-      return monki_y < temp1 || monki_y > temp1 + 8;
+      return monki_y < temp1 || monki_y > temp1 + 16;
     case DOWN:
-      return monki_y > temp1 || monki_y < temp1 - 32;
+      return monki_y > temp1 || monki_y < temp1 - 40;
     case RIGHT:
     case LEFT:
-      return !( monki_y > ( temp2 - 32 ) && monki_y < ( temp2 + 16 ));
+      return !( monki_y > ( temp2 - 42 ) && monki_y < temp2 + 0 );
   }
 
   return TRUE;

@@ -67,8 +67,8 @@ const unsigned int  ANIMATION_SPEED = 3;
 #pragma bss-name(push, "BSS")
 
 // GLOBALS
-unsigned char lives=START_LIVES;
 unsigned char pad1;
+unsigned char lives=START_LIVES;
 unsigned char score=START_SCORE;
 unsigned char timer=START_TIMER;
 
@@ -77,20 +77,6 @@ unsigned char monki_x=LEFT_POLE;
 unsigned char monki_y=MONKI_TOP;
 unsigned char left_gap_y;
 unsigned char right_gap_y;
-unsigned int scroll_x;
-unsigned int scroll_y;
-
-// POLES
-struct pole {
-  unsigned int y;
-  unsigned int height;
-  unsigned char sprite;
-  unsigned char attr;
-};
-
-struct pole poles[64];
-struct pole current_left_pole;
-struct pole current_right_pole;
 
 // OBJECTS
 struct object {
@@ -107,7 +93,6 @@ int active_object;
 // TEMPS
 unsigned char temp1;
 unsigned char temp2;
-unsigned int ntaddr = 0;
 unsigned int x;
 unsigned int y;
 unsigned int i;
