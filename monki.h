@@ -1,7 +1,7 @@
 #pragma bss-name(push, "ZEROPAGE")
 
 // LIVES / SCORE / TIMER:
-#define START_TIMER     0x93
+#define START_TIMER     0x40 // 0x93
 #define START_LIVES     0x32
 #define START_SCORE     0x30
 #define ZERO_LIVES      0x30
@@ -131,7 +131,7 @@ const unsigned char palette_sp[]={
 };
 
 const unsigned char palette_bg[]={
-  0x0F, 0x20, 0x10, 0x00, // black and grays
+  0x31, 0x20, 0x10, 0x00, // black and grays
   0x0F, 0x35, 0x25, 0x15, // black and pinks
   0x0D, 0x00, 0x00, 0x00  // black
 };

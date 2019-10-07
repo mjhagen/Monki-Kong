@@ -32,6 +32,7 @@ void titleScreen( void ) {
   if ( is_gameover ) {
     is_gameover = FALSE;
     clear_bg();
+    music_play( 0 );
     multi_vram_buffer_horz( GAMENAME_TEXT, sizeof( GAMENAME_TEXT ), NTADR_A(10,12) );
     multi_vram_buffer_horz( PRESSSTART_TEXT, sizeof( PRESSSTART_TEXT ), NTADR_A(10,14));
   }
@@ -74,13 +75,15 @@ void runGame( void ) {
 void gameover( void ) {
   if ( !is_gameover ) {
     is_gameover = TRUE;
+    music_stop();
     sfx_play( SFX_GAMEOVER, 0 );
     clear_bg();
+    pal_col(0,0x31);
     multi_vram_buffer_horz(GAMEOVER_TEXT, sizeof(GAMEOVER_TEXT), NTADR_A(11,14));
-
-    oam_meta_spr( 64, 64, score_text );
-    drawNumbers( 64, 64, score );
   }
+
+  oam_meta_spr( 88, 128, score_text );
+  drawNumbers( 160, 128, score );
 }
 
 void pauseGame( void ) {
@@ -115,6 +118,13 @@ void setupObjects( void ) {
 void drawScoreboard( void ) {
   if ( game_frame % 60 == 0 ) {
     timer--;
+  }
+
+  if ( timer <= 0x3A ) {
+    pal_col(0,0x36);
+    set_music_speed( 5 );
+  } else {
+    set_music_speed( 6 );
   }
 
   if ( timer <= 0x30 ) {
@@ -304,6 +314,12 @@ void monkiGrabs( void ) {
       case 1:
         monkiDies();
         return;
+
+      case 3:
+        timer+=10;
+        score++;
+        sfx_play( SFX_DING, 0 );
+        break;
 
       default:
         score++;
