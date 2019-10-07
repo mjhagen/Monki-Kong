@@ -59,7 +59,7 @@ void runGame( void ) {
     is_paused = FALSE;
     is_gameover = FALSE;
     clear_bg();
-    pal_col(0,0x31);
+    pal_col( 0, 0x0F );
     drawStaticPoles();
   }
 
@@ -79,7 +79,7 @@ void gameover( void ) {
     music_stop();
     sfx_play( SFX_GAMEOVER, 0 );
     clear_bg();
-    pal_col(0,0x0F);
+    pal_col( 0, 0x0F );
     multi_vram_buffer_horz(GAMEOVER_TEXT, sizeof(GAMEOVER_TEXT), NTADR_A(11,14));
   }
 
@@ -121,12 +121,14 @@ void drawScoreboard( void ) {
     timer--;
   }
 
-  if ( timer <= 0x3A ) {
-    pal_col(0,0x36);
+  if ( timer <= 0x35 ) {
+    set_music_speed( 4 );
+    pal_col( 0, 0x06 );
+  } else if ( timer <= 0x3A ) {
     set_music_speed( 5 );
   } else {
-    pal_col(0,0x31);
     set_music_speed( 6 );
+    pal_col( 0, 0x0F );
   }
 
   if ( timer <= 0x30 ) {
@@ -178,27 +180,24 @@ void drawStaticPoles( void ) {
 void drawGaps( void ) {
   temp1 = 0x03;
 
-  if ( timer <= 0x3A ) {
+  if ( timer <= 0x35 ) {
     temp1 = 0x01;
   }
 
-  oam_spr( LEFT_POLE + 8, left_gap_y-8,  0x7F, temp1 );
-  oam_spr( LEFT_POLE + 8, left_gap_y,    0x7F, temp1 );
-  oam_spr( LEFT_POLE + 8, left_gap_y+8,  0x7F, temp1 );
+  oam_spr( LEFT_POLE + 10, left_gap_y-8,  0x7F, temp1 );
+  oam_spr( LEFT_POLE + 10, left_gap_y,    0x7F, temp1 );
+  oam_spr( LEFT_POLE + 10, left_gap_y+8,  0x7F, temp1 );
 
-  oam_spr( RIGHT_POLE, right_gap_y-8, 0x7F, temp1 );
-  oam_spr( RIGHT_POLE, right_gap_y,   0x7F, temp1 );
-  oam_spr( RIGHT_POLE, right_gap_y+8, 0x7F, temp1 );
+  oam_spr( RIGHT_POLE - 2, right_gap_y-8, 0x7F, temp1 );
+  oam_spr( RIGHT_POLE - 2, right_gap_y,   0x7F, temp1 );
+  oam_spr( RIGHT_POLE - 2, right_gap_y+8, 0x7F, temp1 );
 }
 
 void drawObjects( void ) {
   // show next object at random intervals
   if ( game_frame % 75 == 0 ) {
-    // find an object that hasn't been grabbed yet
-    do {
-      active_object++;
-      if ( active_object > 63 ) active_object = 0;
-    } while( objects[ active_object ].grabbed );
+    active_object = randRange( 0, 63 );
+    objects[ active_object ].grabbed = FALSE;
   }
 
   if ( objects[ active_object ].grabbed == TRUE )
@@ -366,7 +365,7 @@ void monkiJumps( int direction ) {
 void monkiDies( void ) {
   lives--;
   monkiMoves( TOP, 0 );
-  pal_col(0,0x26);
+  pal_col( 0, 0x06 );
   delay( 10 );
 
   if ( lives < ZERO_LIVES ) {
