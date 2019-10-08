@@ -11,16 +11,16 @@
 #define START_LIVES     0x32
 #define START_SCORE     0x30
 #define ZERO_LIVES      0x30
+#define ITEM_1UP        0x90
+#define ITEM_DEATH      0x91
+#define ITEM_TIMEEXT    0xA1
 
 // COORDINATES:
 #define LEFT_POLE       0x48
 #define RIGHT_POLE      0xA0
 #define MID_POINT       0x70
-#define MONKI_TOP       0x20 // TODO: should be top of a pole
-#define MONKI_BOTTOM    0xD0 // TODO: should be bottom of a pole
-
-// ANIMATION HINTS:
-#define MAX_MONKIFRAME  0x06 // frames in every animation
+#define MONKI_TOP       0x20
+#define MONKI_BOTTOM    0xD0
 
 // TEXTS:
 const unsigned char GAMEOVER_TEXT[]     =    "GAME OVER";     // x=11
@@ -29,8 +29,9 @@ const unsigned char GAMEPAUSED_TEXT[]   =     "PAUSED";       // x=12
 const unsigned char PRESSSTART_TEXT[]   =   "press start";    // x=10
 
 // CONSTANTS:
-const unsigned int  GAME_SPEED      = 3;
-const unsigned int  ANIMATION_SPEED = 10;
+const int  GAME_SPEED      = 3;
+const int  ANIMATION_SPEED = 6;
+const int  MAX_MONKIFRAME  = 6;
 
 // color palettes
 const unsigned char palette_sp[]={
@@ -98,17 +99,18 @@ const unsigned char lives_text[]={
 };
 
 // first arg is object type, second arg is color:
-const unsigned char object_types[10][2]={
-  { 0x90, 0x01 }, // 1up
+const unsigned char object_types[11][2]={
   { 0x91, 0x01 }, // Adam
+  { 0x90, 0x01 }, // 1up
   { 0xA0, 0x01 }, // casette
-  { 0xA1, 0x02 }, // diabolo
   { 0xB0, 0x01 }, // elleboog
   { 0xB1, 0x01 }, // fiets
   { 0xB4, 0x00 }, // lamp
   { 0xC3, 0x00 }, // LP
   { 0xC4, 0x02 }, // rups
-  { 0xC5, 0x01 }  // TENT
+  { 0xC5, 0x01 }, // TENT
+  { 0xC6, 0x00 }, // LAMP2
+  { 0xA1, 0x02 }, // diabolo
 };
 
 #pragma bss-name(push, "BSS")
@@ -151,40 +153,32 @@ enum {
   REACHING_RIGHT
 };
 
-// GLOBALS
 unsigned char pad1;
+unsigned char temp1;
+unsigned char temp2;
+unsigned char left_gap_y;
+unsigned char right_gap_y;
 unsigned char lives=START_LIVES;
 unsigned char score=START_SCORE;
 unsigned char timer=START_TIMER;
-
-// GLOBAL X/Ys
 unsigned char monki_x=LEFT_POLE;
 unsigned char monki_y=MONKI_TOP;
-unsigned char left_gap_y;
-unsigned char right_gap_y;
+unsigned char gap_color=0x01;
 
-// TEMPS
-unsigned char temp1;
-unsigned char temp2;
 unsigned int x;
 unsigned int y;
 unsigned int i;
-
 unsigned int game_mode=TITLE;
 unsigned int monki_state=CLIMBING_LEFT;
-
-// monki positions
 unsigned int on_left_pole=TRUE;
 unsigned int is_gameover=FALSE;
 unsigned int is_jumping=FALSE;
 unsigned int is_paused=FALSE;
 unsigned int is_reaching=FALSE;
+unsigned int active_object=0;
 
-// frame timers
-unsigned int game_frame=0;
-
+int game_frame=0;
 int monki_frame=0;
-int active_object;
 
 // OBJECTS
 struct object {
@@ -208,6 +202,7 @@ void drawStaticPoles( void );
 void frame( int direction );
 void gameover( void );
 void monkiDies( void );
+void monkiJumps( int direction );
 void monkiGrabs( void );
 void monkiMoves( int direction, int amount );
 void movement( void );
@@ -218,6 +213,7 @@ void setupObjects( void );
 void startGame( void );
 void titleScreen( void );
 void updateMonkiState( void );
+void updateTimer( void );
 void upkeep( void );
 int monkiCanMove( int direction );
 int randRange( int low, int high );

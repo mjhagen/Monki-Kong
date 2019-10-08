@@ -32,6 +32,7 @@ void titleScreen( void ) {
   if ( is_gameover ) {
     is_gameover = FALSE;
     clear_bg();
+    set_music_speed( 6 );
     music_play( 0 );
     multi_vram_buffer_horz( GAMENAME_TEXT, sizeof( GAMENAME_TEXT ), NTADR_A(10,12) );
     multi_vram_buffer_horz( PRESSSTART_TEXT, sizeof( PRESSSTART_TEXT ), NTADR_A(10,14));
@@ -44,6 +45,7 @@ void startGame( void ) {
 
   pal_fade_to(4,0);
   clear_bg();
+  set_music_speed( 6 );
   drawStaticPoles();
   delay(10);
 
@@ -65,6 +67,7 @@ void runGame( void ) {
 
   movement();
   scrolling();
+  updateTimer();
   updateMonkiState();
 
   drawGaps();
@@ -105,30 +108,18 @@ void setupObjects( void ) {
 
   active_object = 0;
 
+  // generate random objects:
   for ( i = 0; i < 64; ++i ){
-    // generate random object:
     objects[ i ].grabbed  = FALSE;
-    objects[ i ].type     = randRange( 0, 9 );
-    objects[ i ].x        = i % 2
-                              ? LEFT_POLE - 8
-                              : RIGHT_POLE + 16;
+    objects[ i ].type     = randRange( 0, 10 );
+    objects[ i ].x        = i % 2 ? LEFT_POLE - 8 : RIGHT_POLE + 16;
     objects[ i ].y        = randRange( MONKI_TOP + 16, MONKI_BOTTOM - 16 );
   }
 }
 
-void drawScoreboard( void ) {
+void updateTimer( void ) {
   if ( game_frame % 60 == 0 ) {
     timer--;
-  }
-
-  if ( timer <= 0x35 ) {
-    set_music_speed( 4 );
-    pal_col( 0, 0x06 );
-  } else if ( timer <= 0x3A ) {
-    set_music_speed( 5 );
-  } else {
-    set_music_speed( 6 );
-    pal_col( 0, 0x0F );
   }
 
   if ( timer <= 0x30 ) {
@@ -136,17 +127,37 @@ void drawScoreboard( void ) {
     return;
   }
 
+  pal_col( 0, 0x0F );
+  gap_color = 0x03;
+
+  if ( timer <= 0x35 ) {
+    set_music_speed( 4 );
+    pal_col( 0, 0x06 );
+    gap_color = 0x01;
+  } else if ( timer <= 0x3A ) {
+    set_music_speed( 5 );
+  } else {
+    set_music_speed( 6 );
+  }
+
+
+  if ( timer == 0x35 ) {
+    objects[ active_object ].type = 10;
+  }
+}
+
+void drawScoreboard( void ) {
   // score
   oam_meta_spr( 8, 6, timer_text );
   drawNumbers( 80, 6, timer );
 
   // lives
   oam_meta_spr( 8, 16, lives_text );
-  drawNumbers( 80, 16, lives );
+  drawNumbers( 80, 16, monki_frame + 0x30 ); // lives );
 
   // score
   oam_meta_spr( 8, 26, score_text );
-  drawNumbers( 80, 26, score );
+  drawNumbers( 80, 26, monki_state ); // score );
 }
 
 void drawNumbers( char x, char y, char nr ) {
@@ -178,19 +189,13 @@ void drawStaticPoles( void ) {
 }
 
 void drawGaps( void ) {
-  temp1 = 0x03;
+  oam_spr( LEFT_POLE + 10, left_gap_y-8,  0x7F, gap_color );
+  oam_spr( LEFT_POLE + 10, left_gap_y,    0x7F, gap_color );
+  oam_spr( LEFT_POLE + 10, left_gap_y+8,  0x7F, gap_color );
 
-  if ( timer <= 0x35 ) {
-    temp1 = 0x01;
-  }
-
-  oam_spr( LEFT_POLE + 10, left_gap_y-8,  0x7F, temp1 );
-  oam_spr( LEFT_POLE + 10, left_gap_y,    0x7F, temp1 );
-  oam_spr( LEFT_POLE + 10, left_gap_y+8,  0x7F, temp1 );
-
-  oam_spr( RIGHT_POLE - 2, right_gap_y-8, 0x7F, temp1 );
-  oam_spr( RIGHT_POLE - 2, right_gap_y,   0x7F, temp1 );
-  oam_spr( RIGHT_POLE - 2, right_gap_y+8, 0x7F, temp1 );
+  oam_spr( RIGHT_POLE - 2, right_gap_y-8, 0x7F, gap_color );
+  oam_spr( RIGHT_POLE - 2, right_gap_y,   0x7F, gap_color );
+  oam_spr( RIGHT_POLE - 2, right_gap_y+8, 0x7F, gap_color );
 }
 
 void drawObjects( void ) {
@@ -198,10 +203,12 @@ void drawObjects( void ) {
   if ( game_frame % 75 == 0 ) {
     active_object = randRange( 0, 63 );
     objects[ active_object ].grabbed = FALSE;
+    objects[ active_object ].type = randRange( 0, 10 );
   }
 
   if ( objects[ active_object ].grabbed == TRUE )
     return;
+
 
   temp1 = object_types[ objects[ active_object ].type ][ 0 ]; // sprite
   temp2 = object_types[ objects[ active_object ].type ][ 1 ]; // attribute
@@ -226,8 +233,8 @@ void updateMonkiState( void ) {
       if ( monki_x > 0 ) monkiMoves( RIGHT, 8 );
 
       // simulate gravity:
-      if ( monki_x > MID_POINT ) monkiMoves( UP, 1 );
-      else monkiMoves( DOWN, monki_frame );
+      if ( monki_x > MID_POINT ) monkiMoves( UP, 2 );
+      else monkiMoves( DOWN, 4 );
 
       // done jumping:
       if ( monki_x < LEFT_POLE + 1 ) {
@@ -239,12 +246,13 @@ void updateMonkiState( void ) {
       if ( monki_x > 0 ) monkiMoves( LEFT, 8 );
 
       // simulate gravity:
-      if ( monki_x < MID_POINT ) monkiMoves( UP, 1 );
-      else monkiMoves( DOWN, monki_frame );
+      if ( monki_x < MID_POINT ) monkiMoves( UP, 2 );
+      else monkiMoves( DOWN, 4 );
 
       // done jumping:
       if ( monki_x > RIGHT_POLE - 1 ) {
         sfx_play( SFX_IMPACT, 0 );
+        monki_frame = 0;
         is_jumping = FALSE;
       }
     }
@@ -263,7 +271,6 @@ void updateMonkiState( void ) {
 void drawMonki( void ) {
   if ( monki_state == REACHING_LEFT ) monki_x = LEFT_POLE - 8;
   if ( monki_state == CLIMBING_LEFT ) monki_x = LEFT_POLE + 1;
-
   oam_meta_spr(monki_x, monki_y, monki_states[ monki_state ][ monki_frame ] );
 }
 
@@ -312,31 +319,30 @@ void monkiGrabs( void ) {
 
   // both true, hit!
   if ( temp1 && temp2 ) {
-    switch ( objects[ active_object ].type ) {
-      case 0:
-        lives++;
-        sfx_play( SFX_1UP, 0 );
-        break;
+    oam_spr( x, y, 0x4F, 0 ); // draw hit sprite
 
-      case 1:
-        monkiDies();
-        return;
+    is_reaching = FALSE;
+    objects[ active_object ].grabbed = TRUE;
 
-      case 3:
-        timer+=10;
-        score++;
-        sfx_play( SFX_DING, 0 );
-        break;
+    switch ( object_types[ objects[ active_object ].type ][ 0 ] ) {
+
+      case ITEM_1UP:      lives++;
+                          timer+=3;
+                          sfx_play( SFX_1UP, 0 );
+                          break;
+
+      case ITEM_DEATH:    monkiDies();
+                          break;
+
+      case ITEM_TIMEEXT:  timer+=5;
+                          score++;
+                          sfx_play( SFX_DING, 0 );
+                          break;
 
       default:
         score++;
         sfx_play( SFX_DING, 0 );
     }
-
-    oam_spr( x, y, 0x4F, 0 ); // draw hit sprite
-
-    is_reaching = FALSE;
-    objects[ active_object ].grabbed = TRUE;
   }
 }
 
@@ -347,6 +353,8 @@ void monkiReaches( void ) {
 
 void monkiJumps( int direction ) {
   if ( is_jumping ) return;
+
+  monki_frame = 0;
 
   sfx_play( SFX_JUMP, 0 );
 
@@ -366,7 +374,7 @@ void monkiDies( void ) {
   lives--;
   monkiMoves( TOP, 0 );
   pal_col( 0, 0x06 );
-  delay( 10 );
+  delay( 15 );
 
   if ( lives < ZERO_LIVES ) {
     game_mode = GAMEOVER;
@@ -419,13 +427,11 @@ void movement( void ) {
   if ( on_left_pole ) {
     if ( pad1 & PAD_LEFT ) monkiReaches();
     if ( pad1 & PAD_RIGHT && monkiCanMove( RIGHT ) ) {
-      monki_frame = 0;
       monkiJumps( RIGHT );
     }
   } else {
     if ( pad1 & PAD_RIGHT ) monkiReaches();
     if ( pad1 & PAD_LEFT && monkiCanMove( LEFT ) ) {
-      monki_frame = 0;
       monkiJumps( LEFT );
     }
   }
@@ -434,31 +440,34 @@ void movement( void ) {
 
   if (pad1 & PAD_UP && monkiCanMove( UP )) {
     frame( UP );
-    if ( game_frame % GAME_SPEED == 0 ) monkiMoves( UP, 8 );
+    if ( game_frame % GAME_SPEED == 0 ) {
+      monkiMoves( UP, 8 );
+    }
   }
 
   if (pad1 & PAD_DOWN && monkiCanMove( DOWN )) {
     frame( DOWN );
-    if ( game_frame % GAME_SPEED == 0 ) monkiMoves( DOWN, 8 );
+    if ( game_frame % GAME_SPEED == 0 ) {
+      monkiMoves( DOWN, 8 );
+    }
   }
 }
 
 void frame( int direction ) {
-  if ( game_frame % ANIMATION_SPEED == 0 ) {
-    switch ( direction ) {
-      case UP:
-        monki_frame++;
-        break;
-      case DOWN:
-        monki_frame--;
-        break;
-    }
+  if ( game_frame % ANIMATION_SPEED != 0 )
+    return;
 
-    if ( monki_frame >= MAX_MONKIFRAME )
-      monki_frame = 0;
-    else if ( monki_frame < 0 )
-      monki_frame = MAX_MONKIFRAME - 1;
+  switch ( direction ) {
+    case UP:
+      monki_frame++;
+      break;
+    case DOWN:
+      monki_frame--;
+      break;
   }
+
+  if ( monki_frame > 5 ) monki_frame = 0;
+  if ( monki_frame < 0 ) monki_frame = 5;
 }
 
 void scrolling( void ) {
