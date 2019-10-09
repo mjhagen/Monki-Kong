@@ -425,12 +425,12 @@ void movement( void ) {
   }
 
   if ( on_left_pole ) {
-    if ( pad1 & PAD_LEFT ) monkiReaches();
+    if ( pad1 & PAD_B ) monkiReaches();
     if ( pad1 & PAD_RIGHT && monkiCanMove( RIGHT ) ) {
       monkiJumps( RIGHT );
     }
   } else {
-    if ( pad1 & PAD_RIGHT ) monkiReaches();
+    if ( pad1 & PAD_A ) monkiReaches();
     if ( pad1 & PAD_LEFT && monkiCanMove( LEFT ) ) {
       monkiJumps( LEFT );
     }
@@ -439,15 +439,15 @@ void movement( void ) {
   if ( is_reaching ) return;
 
   if (pad1 & PAD_UP && monkiCanMove( UP )) {
-    frame( UP );
     if ( game_frame % GAME_SPEED == 0 ) {
+      frame( UP );
       monkiMoves( UP, 8 );
     }
   }
 
   if (pad1 & PAD_DOWN && monkiCanMove( DOWN )) {
-    frame( DOWN );
     if ( game_frame % GAME_SPEED == 0 ) {
+      frame( DOWN );
       monkiMoves( DOWN, 8 );
     }
   }
@@ -473,7 +473,6 @@ void frame( int direction ) {
 void scrolling( void ) {
   ++left_gap_y;
   ++right_gap_y;
-
   monkiMoves( DOWN, 1 );
 }
 
@@ -496,9 +495,9 @@ int monkiCanMove( int direction ) {
 
   switch ( direction ) {
     case UP:
-      return monki_y < temp1 || monki_y > temp1 + 16;
+      return monki_y < temp1 + 8 || monki_y > temp1 + 16;
     case DOWN:
-      return monki_y > temp1 || monki_y < temp1 - 40;
+      return monki_y > temp1 + 8 || monki_y < temp1 - 40;
     case RIGHT:
     case LEFT:
       return !( monki_y > ( temp2 - 42 ) && monki_y < temp2 + 0 );
