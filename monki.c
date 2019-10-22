@@ -7,18 +7,10 @@
 
 void main( void ) {
   upkeep();
-
-  ppu_off();
-
-  pal_bg(palette_bg);
-  pal_spr(palette_sp);
   initGame();
-
-  ppu_on_all();
 
   while( 1 ) {
     upkeep();
-
     switch( game_mode ) {
       case TITLE:     titleScreen();  break;
       case STARTGAME: startGame();    break;
@@ -30,25 +22,28 @@ void main( void ) {
 }
 
 void initGame( void ) {
+  pal_bg(palette_bg);
+  pal_spr(palette_sp);
+
   is_gameover = TRUE;
 
-  highscorers[0].initials="BEN";
-  highscorers[1].initials="MJH";
-  highscorers[2].initials="HAN";
-  highscorers[3].initials="JIR";
-  highscorers[4].initials="CAH";
-
-  highscorers[0].score=40;
-  highscorers[1].score=30;
-  highscorers[2].score=20;
-  highscorers[3].score=10;
-  highscorers[4].score=5;
+  highscorers[0].initials="BEN"; highscorers[0].score=40;
+  highscorers[1].initials="MJH"; highscorers[1].score=30;
+  highscorers[2].initials="HAN"; highscorers[2].score=20;
+  highscorers[3].initials="JIR"; highscorers[3].score=10;
+  highscorers[4].initials="CAH"; highscorers[4].score=5;
 }
 
 // game modes
 void titleScreen( void ) {
+  if ( player_one & PAD_START ) {
+    game_mode = STARTGAME;
+    return;
+  }
+
   if ( is_gameover ) {
     is_gameover = FALSE;
+
     ppu_off();
     clear_bg();
 
@@ -63,12 +58,8 @@ void titleScreen( void ) {
     drawLeaderboard();
     ppu_on_all();
   }
-
-  y = 10;
-  for ( j = 6; j > 0; ) oam_meta_spr( 88, y+=14, titles[ --j ] );
-
-  y = 112;
-  for ( j = 0; j < 1; ) oam_meta_spr( 88, y+=14, titles[ j++ ] );
+  y =  10; for ( j = 6; j > 0; ) oam_meta_spr( 88, y+=14, titles[ --j ] );
+  y = 112; for ( j = 0; j < 1; ) oam_meta_spr( 88, y+=14, titles[ j++ ] );
 }
 
 void startGame( void ) {
@@ -88,14 +79,19 @@ void startGame( void ) {
 }
 
 void runGame( void ) {
+  if ( player_one & PAD_START ) {
+    game_mode = PAUSE;
+    return;
+  }
+
   if ( is_paused || is_gameover ) {
     is_paused = FALSE;
     is_gameover = FALSE;
     drawPlayfield();
   }
 
-  movement();
-  scrolling();
+  updateMovement();
+  updateScroll();
   updateTimer();
   updateMonkiState();
 
@@ -120,6 +116,9 @@ void gameover( void ) {
     multi_vram_buffer_horz( SCORE_TEXT, sizeof( SCORE_TEXT ), NTADR_A( 11, 16 ) );
 
     hasHighscore();
+
+    hs_pos = 0;
+    key_down_frame = 0;
   }
 
   // show final score:
@@ -135,6 +134,12 @@ void gameover( void ) {
 }
 
 void pauseGame( void ) {
+  if ( player_one & PAD_START ) {
+    game_mode = PLAYING;
+    delay( 10 );
+    return;
+  }
+
   if ( !is_paused ) {
     is_paused = TRUE;
     clear_bg();
@@ -290,10 +295,9 @@ void drawLeaderboard( void ) {
 }
 
 void drawEnterInitials( void ) {
-  hs_pos = 0;
   if ( leaderboard_pos < 6 ) {
     // enter high score initials:
-    if ( key_down_frame == 0 || game_frame - key_down_frame > 5 )
+    if ( key_down_frame == 0 || game_frame - key_down_frame > 3 )
       key_down = FALSE;
 
     if ( !key_down ) {
@@ -320,10 +324,8 @@ void drawEnterInitials( void ) {
       oam_spr( 88 + ( i * 8 ), 140, initials[ i ], hs_pos == i ? 2 : 3 );
     }
 
-    if ( leaderboard_pos < 6 ) {
-      highscorers[ leaderboard_pos ].score = score;
-      highscorers[ leaderboard_pos ].initials = initials;
-    }
+    highscorers[ leaderboard_pos ].score = score;
+    highscorers[ leaderboard_pos ].initials = initials;
   }
 }
 
@@ -497,37 +499,19 @@ void hasHighscore( void ) {
 }
 
 // house keeping
-void controllers( void ) {
-  player_one = pad_poll( 0 ); // read the first controller
-
-  if ( player_one & PAD_START ) {
-    switch ( game_mode ) {
-      case PLAYING: game_mode = PAUSE;
-                    return;
-
-      case PAUSE:   game_mode = PLAYING;
-                    delay( 10 );
-                    return;
-
-      case TITLE:   game_mode = STARTGAME;
-                    return;
-    }
-  }
-}
-
 void upkeep( void ) {
   ppu_wait_nmi();
 
   game_frame++;
   monki_moving = FALSE;
-  controllers();
+  player_one = pad_poll( 0 ); // read the first controller
 
   clear_vram_buffer();
   set_vram_buffer();
   oam_clear();
 }
 
-void movement( void ) {
+void updateMovement( void ) {
   if ( is_jumping ) {
     monki_moving = TRUE;
     frame( UP );
@@ -583,7 +567,7 @@ void frame( int direction ) {
   if ( monki_frame < 0 ) monki_frame = 5;
 }
 
-void scrolling( void ) {
+void updateScroll( void ) {
   ++left_gap_y;
   ++right_gap_y;
   if ( !monki_moving ) monkiMoves( DOWN, 1 );

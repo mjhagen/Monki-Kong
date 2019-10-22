@@ -194,8 +194,6 @@ struct Highscorer highscorers[5];
 unsigned int highscores[5];
 
 // PROTOTYPES
-void clear_bg( void );
-void controllers( void );
 void drawEnterInitials( void );
 void drawGaps( void );
 void drawLeaderboard( void );
@@ -206,24 +204,31 @@ void drawObjects( void );
 void drawPlayfield( void );
 void drawScoreboard( void );
 void drawStaticPoles( int left, int right );
-void frame( int direction );
-void gameover( void );
-void hasHighscore( void );
-void initGame( void );
+
 void monkiDies( void );
 void monkiGrabs( void );
 void monkiJumps( int direction );
 void monkiMoves( int direction, int amount );
-void movement( void );
-void pauseGame( void );
-void runGame( void );
-void scrolling( void );
-void setupObjects( void );
-void startGame( void );
+
 void titleScreen( void );
+void startGame( void );
+void runGame( void );
+void pauseGame( void );
+void gameover( void );
+
+void initGame( void );
+void setupObjects( void );
+
 void updateMonkiState( void );
+void updateMovement( void );
+void updateScroll( void );
 void updateTimer( void );
 void upkeep( void );
+
+void frame( int direction );
+void hasHighscore( void );
+void clear_bg( void );
+
 int monkiCanMove( int direction );
 int randRange( int low, int high );
 int compareScore(const void *a, const void *b);
