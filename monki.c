@@ -1,18 +1,20 @@
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "LIB/neslib.h"
 #include "LIB/nesdoug.h"
 #include "monki.h"
 
 void main( void ) {
   upkeep();
+
   ppu_off();
+
   pal_bg(palette_bg);
   pal_spr(palette_sp);
-  clear_vram_buffer();
-  ppu_on_all();
+  initGame();
 
-  is_gameover = TRUE;
+  ppu_on_all();
 
   while( 1 ) {
     upkeep();
@@ -27,16 +29,46 @@ void main( void ) {
   }
 }
 
+void initGame( void ) {
+  is_gameover = TRUE;
+
+  highscorers[0].initials="BEN";
+  highscorers[1].initials="MJH";
+  highscorers[2].initials="HAN";
+  highscorers[3].initials="JIR";
+  highscorers[4].initials="CAH";
+
+  highscorers[0].score=40;
+  highscorers[1].score=30;
+  highscorers[2].score=20;
+  highscorers[3].score=10;
+  highscorers[4].score=5;
+}
+
 // game modes
 void titleScreen( void ) {
   if ( is_gameover ) {
     is_gameover = FALSE;
+    ppu_off();
     clear_bg();
+
+    drawStaticPoles( 8*8, 8*23 );
     set_music_speed( 6 );
     music_play( 0 );
-    multi_vram_buffer_horz( GAMENAME_TEXT, sizeof( GAMENAME_TEXT ), NTADR_A(10,12) );
-    multi_vram_buffer_horz( PRESSSTART_TEXT, sizeof( PRESSSTART_TEXT ), NTADR_A(10,14));
+
+    multi_vram_buffer_horz( GAMENAME_TEXT, sizeof( GAMENAME_TEXT ), NTADR_A(11,14) );
+    multi_vram_buffer_horz( "PRESS", sizeof( "PRESS" ), NTADR_A(2,14));
+    multi_vram_buffer_horz( "START", sizeof( "START" ), NTADR_A(25,14));
+
+    drawLeaderboard();
+    ppu_on_all();
   }
+
+  y = 10;
+  for ( j = 6; j > 0; ) oam_meta_spr( 88, y+=14, titles[ --j ] );
+
+  y = 112;
+  for ( j = 0; j < 1; ) oam_meta_spr( 88, y+=14, titles[ j++ ] );
 }
 
 void startGame( void ) {
@@ -44,25 +76,22 @@ void startGame( void ) {
   setupObjects();
 
   pal_fade_to(4,0);
-  clear_bg();
   set_music_speed( 6 );
-  drawStaticPoles();
-  delay(10);
 
+  drawPlayfield();
+
+  delay(10);
   pal_bright(4);
+
   // set game mode for next frame:
   game_mode = PLAYING;
 }
 
 void runGame( void ) {
-  game_frame++;
-
   if ( is_paused || is_gameover ) {
     is_paused = FALSE;
     is_gameover = FALSE;
-    clear_bg();
-    pal_col( 0, 0x0F );
-    drawStaticPoles();
+    drawPlayfield();
   }
 
   movement();
@@ -70,24 +99,39 @@ void runGame( void ) {
   updateTimer();
   updateMonkiState();
 
-  drawGaps();
   drawScoreboard();
+  drawGaps();
   drawObjects();
   drawMonki();
+
+  // gray_line();
 }
 
 void gameover( void ) {
   if ( !is_gameover ) {
     is_gameover = TRUE;
+
     music_stop();
     sfx_play( SFX_GAMEOVER, 0 );
+
     clear_bg();
     pal_col( 0, 0x0F );
-    multi_vram_buffer_horz(GAMEOVER_TEXT, sizeof(GAMEOVER_TEXT), NTADR_A(11,14));
+    multi_vram_buffer_horz( GAMEOVER_TEXT, sizeof( GAMEOVER_TEXT ), NTADR_A( 11, 14 ) );
+    multi_vram_buffer_horz( SCORE_TEXT, sizeof( SCORE_TEXT ), NTADR_A( 11, 16 ) );
+
+    hasHighscore();
   }
 
-  oam_meta_spr( 88, 128, score_text );
+  // show final score:
   drawNumbers( 160, 128, score );
+
+  drawEnterInitials();
+
+  if ( player_one & PAD_START ) {
+    game_mode = TITLE;
+    delay( 10 );
+    return;
+  }
 }
 
 void pauseGame( void ) {
@@ -95,6 +139,7 @@ void pauseGame( void ) {
     is_paused = TRUE;
     clear_bg();
     multi_vram_buffer_horz(GAMEPAUSED_TEXT, sizeof(GAMEPAUSED_TEXT), NTADR_A(13,14));
+    delay( 6 );
   }
 }
 
@@ -112,7 +157,7 @@ void setupObjects( void ) {
   for ( i = 0; i < 64; ++i ){
     objects[ i ].grabbed  = FALSE;
     objects[ i ].type     = randRange( 0, 10 );
-    objects[ i ].x        = i % 2 ? LEFT_POLE - 8 : RIGHT_POLE + 16;
+    objects[ i ].x        = i % 2 ? LEFT_POLE - 16 : RIGHT_POLE + 16;
     objects[ i ].y        = randRange( MONKI_TOP + 16, MONKI_BOTTOM - 16 );
   }
 }
@@ -140,24 +185,25 @@ void updateTimer( void ) {
     set_music_speed( 6 );
   }
 
-
   if ( timer == 0x35 ) {
     objects[ active_object ].type = 10;
   }
 }
 
+void drawPlayfield( void ) {
+  clear_bg();
+  pal_col( 0, 0x0F );
+  gap_color = 0x03;
+  drawStaticPoles( LEFT_POLE, RIGHT_POLE );
+  multi_vram_buffer_horz( TIMER_TEXT, sizeof( TIMER_TEXT ), NTADR_A(1,1) );
+  multi_vram_buffer_horz( LIVES_TEXT, sizeof( LIVES_TEXT ), NTADR_A(1,2) );
+  multi_vram_buffer_horz( SCORE_TEXT, sizeof( SCORE_TEXT ), NTADR_A(1,3) );
+}
+
 void drawScoreboard( void ) {
-  // score
-  oam_meta_spr( 8, 6, timer_text );
   drawNumbers( 80, 6, timer );
-
-  // lives
-  oam_meta_spr( 8, 16, lives_text );
-  drawNumbers( 80, 16, monki_frame + 0x30 ); // lives );
-
-  // score
-  oam_meta_spr( 8, 26, score_text );
-  drawNumbers( 80, 26, monki_state ); // score );
+  drawNumbers( 80, 16, lives );
+  drawNumbers( 80, 26, score );
 }
 
 void drawNumbers( char x, char y, char nr ) {
@@ -173,29 +219,47 @@ void drawNumbers( char x, char y, char nr ) {
   if ( nr > 99 ) oam_spr( x -= 8, y, (( nr / 100 ) % 10) + 0x30, 0x03 );
 }
 
-void drawStaticPoles( void ) {
+void drawNumbersToBg( int x, int y, int nr ) {
+  //   1
+  temp1 = ( ( nr / 1 ) % 10 ) + 0x30;
+  temp2 = 6;
+  one_vram_buffer( temp1, NTADR_A( x--, y ) );
+
+  //  10
+  if ( nr > ( 10 - 1 ) ) {
+    temp1 = ( ( nr / 10 ) % 10 ) + 0x30;
+    temp2 = 5;
+    one_vram_buffer( temp1, NTADR_A( x--, y ) );
+  }
+
+  // 100
+  if ( nr > ( 100 - 1 ) ) {
+    temp1 = ( ( nr / 100 ) % 10 ) + 0x30;
+    temp2 = 4;
+    one_vram_buffer( temp1, NTADR_A( x--, y ) );
+  }
+
+  multi_vram_buffer_horz( "......", temp2, NTADR_A( x-=(temp2-1), y ) );
+}
+
+void drawStaticPoles( int left, int right ) {
+  pal_col( 0, 0x0F );
+
   left_gap_y = 0x10;
-  x = LEFT_POLE + 8;
-  y = 0;
-
-  multi_vram_buffer_vert( Poles[0], 30, get_ppu_addr( 0, x, y ) );
-  multi_vram_buffer_vert( Poles[0], 30, get_ppu_addr( 2, x, y ) );
-
   right_gap_y = 0x78;
-  x = RIGHT_POLE;
-  y = 0;
-  multi_vram_buffer_vert( Poles[1], 30, get_ppu_addr( 0, x, y ) );
-  multi_vram_buffer_vert( Poles[1], 30, get_ppu_addr( 2, x, y ) );
+
+  multi_vram_buffer_vert( Poles[0], 30, get_ppu_addr( 0, left, 0 ) );
+  multi_vram_buffer_vert( Poles[1], 30, get_ppu_addr( 0, right, 0 ) );
 }
 
 void drawGaps( void ) {
-  oam_spr( LEFT_POLE + 10, left_gap_y-8,  0x7F, gap_color );
-  oam_spr( LEFT_POLE + 10, left_gap_y,    0x7F, gap_color );
-  oam_spr( LEFT_POLE + 10, left_gap_y+8,  0x7F, gap_color );
+  oam_spr( LEFT_POLE, left_gap_y-8,  0x7F, gap_color );
+  oam_spr( LEFT_POLE, left_gap_y,    0x7F, gap_color );
+  oam_spr( LEFT_POLE, left_gap_y+8,  0x7F, gap_color );
 
-  oam_spr( RIGHT_POLE - 2, right_gap_y-8, 0x7F, gap_color );
-  oam_spr( RIGHT_POLE - 2, right_gap_y,   0x7F, gap_color );
-  oam_spr( RIGHT_POLE - 2, right_gap_y+8, 0x7F, gap_color );
+  oam_spr( RIGHT_POLE, right_gap_y-8, 0x7F, gap_color );
+  oam_spr( RIGHT_POLE, right_gap_y,   0x7F, gap_color );
+  oam_spr( RIGHT_POLE, right_gap_y+8, 0x7F, gap_color );
 }
 
 void drawObjects( void ) {
@@ -209,11 +273,58 @@ void drawObjects( void ) {
   if ( objects[ active_object ].grabbed == TRUE )
     return;
 
-
   temp1 = object_types[ objects[ active_object ].type ][ 0 ]; // sprite
   temp2 = object_types[ objects[ active_object ].type ][ 1 ]; // attribute
 
   oam_spr( objects[ active_object ].x, objects[ active_object ].y, temp1, temp2 );
+}
+
+void drawLeaderboard( void ) {
+  qsort( &highscorers, 5, sizeof(Highscorer), compareScore );
+  y = 16;
+  for ( i = 0; i<5; i++ ) {
+    y+=2;
+    multi_vram_buffer_horz( highscorers[ i ].initials, 3, NTADR_A(11,y));
+    drawNumbersToBg( 20, y, highscorers[ i ].score );
+  }
+}
+
+void drawEnterInitials( void ) {
+  hs_pos = 0;
+  if ( leaderboard_pos < 6 ) {
+    // enter high score initials:
+    if ( key_down_frame == 0 || game_frame - key_down_frame > 5 )
+      key_down = FALSE;
+
+    if ( !key_down ) {
+      if ( ( player_one & PAD_A || player_one & PAD_RIGHT ) && hs_pos < 2 )
+        hs_pos++;
+
+      if ( ( player_one & PAD_B || player_one & PAD_LEFT ) && hs_pos > 0 )
+        hs_pos--;
+
+      if ( player_one & PAD_UP && initials[ hs_pos ] < 0x5A )
+        initials[ hs_pos ]++;
+
+      if ( player_one & PAD_DOWN && initials[ hs_pos ] > 0x41 )
+        initials[ hs_pos ]--;
+
+      key_down = TRUE;
+      key_down_frame = game_frame;
+    }
+
+    // display initials:
+    for ( i = 0; i<3; i++ ) {
+      if ( hs_pos == i && game_frame % 6 == 0 )
+        continue;
+      oam_spr( 88 + ( i * 8 ), 140, initials[ i ], hs_pos == i ? 2 : 3 );
+    }
+
+    if ( leaderboard_pos < 6 ) {
+      highscorers[ leaderboard_pos ].score = score;
+      highscorers[ leaderboard_pos ].initials = initials;
+    }
+  }
 }
 
 // monki
@@ -269,38 +380,32 @@ void updateMonkiState( void ) {
 }
 
 void drawMonki( void ) {
-  if ( monki_state == REACHING_LEFT ) monki_x = LEFT_POLE - 8;
-  if ( monki_state == CLIMBING_LEFT ) monki_x = LEFT_POLE + 1;
+  if ( monki_state == REACHING_LEFT ) monki_x = LEFT_POLE - 16;
+  if ( monki_state == CLIMBING_LEFT ) monki_x = LEFT_POLE - 8;
+  if ( monki_state == CLIMBING_RIGHT ) monki_x = RIGHT_POLE - 1;
   oam_meta_spr(monki_x, monki_y, monki_states[ monki_state ][ monki_frame ] );
 }
 
 void monkiMoves( int direction, int amount ) {
   switch ( direction ) {
-    case UP:
-      if ( monki_y <= MONKI_TOP ) return;
-      monki_y-=amount;
-      break;
+    case UP:      if ( monki_y <= MONKI_TOP ) return;
+                  monki_y-=amount;
+                  break;
 
-    case DOWN:
-      if ( monki_y >= MONKI_BOTTOM ) {
-        monkiDies();
-      };
-      monki_y+=amount;
-      break;
+    case DOWN:    if ( monki_y >= MONKI_BOTTOM ) monkiDies();
+                  monki_y+=amount;
+                  break;
 
-    case LEFT:
-      monki_x+=amount;
-      break;
+    case LEFT:    monki_x+=amount;
+                  break;
 
-    case RIGHT:
-      monki_x-=amount;
-      break;
+    case RIGHT:   monki_x-=amount;
+                  break;
 
-    case TOP:
-      on_left_pole = TRUE;
-      monki_x = LEFT_POLE;
-      monki_y = MONKI_TOP;
-      break;
+    case TOP:     on_left_pole = TRUE;
+                  monki_x = LEFT_POLE;
+                  monki_y = MONKI_TOP;
+                  break;
   }
 }
 
@@ -324,24 +429,22 @@ void monkiGrabs( void ) {
     is_reaching = FALSE;
     objects[ active_object ].grabbed = TRUE;
 
-    switch ( object_types[ objects[ active_object ].type ][ 0 ] ) {
-
-      case ITEM_1UP:      lives++;
+    switch( object_types[ objects[ active_object ].type ][ 0 ] ) {
+      case ITEM_1UP:      sfx_play( SFX_1UP, 0 );
+                          lives++;
                           timer+=3;
-                          sfx_play( SFX_1UP, 0 );
                           break;
 
       case ITEM_DEATH:    monkiDies();
                           break;
 
-      case ITEM_TIMEEXT:  timer+=5;
+      case ITEM_TIMEEXT:  sfx_play( SFX_DING, 0 );
+                          timer+=5;
                           score++;
-                          sfx_play( SFX_DING, 0 );
                           break;
 
-      default:
-        score++;
-        sfx_play( SFX_DING, 0 );
+      default:            sfx_play( SFX_DING, 0 );
+                          score++;
     }
   }
 }
@@ -354,19 +457,18 @@ void monkiReaches( void ) {
 void monkiJumps( int direction ) {
   if ( is_jumping ) return;
 
-  monki_frame = 0;
-
   sfx_play( SFX_JUMP, 0 );
 
+  monki_frame = 0;
+
   switch ( direction ) {
-    case LEFT:
-      monki_x = RIGHT_POLE - 16;
-      on_left_pole = TRUE;
-      break;
-    case RIGHT:
-      monki_x = LEFT_POLE + 16;
-      on_left_pole = FALSE;
-      break;
+    case LEFT:  monki_x = RIGHT_POLE - 8;
+                on_left_pole = TRUE;
+                break;
+
+    case RIGHT: monki_x = LEFT_POLE + 16;
+                on_left_pole = FALSE;
+                break;
   }
 }
 
@@ -384,86 +486,97 @@ void monkiDies( void ) {
   sfx_play( SFX_DEATH, 0 );
 }
 
+void hasHighscore( void ) {
+  leaderboard_pos = 6;
+
+  for( i=0; i<5; i++ ) {
+    if( score > highscorers[ i ].score ) {
+      leaderboard_pos = i;
+    }
+  }
+}
+
 // house keeping
 void controllers( void ) {
-  pad1 = pad_poll(0); // read the first controller
+  player_one = pad_poll( 0 ); // read the first controller
 
-  if ( pad1 & PAD_START ) {
+  if ( player_one & PAD_START ) {
     switch ( game_mode ) {
-      case PLAYING:
-        game_mode = PAUSE;
-        color_emphasis(COL_EMP_DARK);
-        delay( 10 );
-        return;
+      case PLAYING: game_mode = PAUSE;
+                    return;
 
-      case PAUSE:
-        game_mode = PLAYING;
-        color_emphasis( COL_EMP_NORMAL );
-        delay( 10 );
-        return;
+      case PAUSE:   game_mode = PLAYING;
+                    delay( 10 );
+                    return;
 
-      case TITLE:
-      case GAMEOVER:
-        game_mode = STARTGAME;
-        return;
+      case TITLE:   game_mode = STARTGAME;
+                    return;
     }
   }
 }
 
 void upkeep( void ) {
   ppu_wait_nmi();
-  clear_vram_buffer();
-  oam_clear();
-  set_vram_buffer();
+
+  game_frame++;
+  monki_moving = FALSE;
   controllers();
+
+  clear_vram_buffer();
+  set_vram_buffer();
+  oam_clear();
 }
 
 void movement( void ) {
   if ( is_jumping ) {
+    monki_moving = TRUE;
     frame( UP );
     return;
   }
 
   if ( on_left_pole ) {
-    if ( pad1 & PAD_B ) monkiReaches();
-    if ( pad1 & PAD_RIGHT && monkiCanMove( RIGHT ) ) {
+    if ( player_one & PAD_B ) monkiReaches();
+    if ( player_one & PAD_RIGHT && monkiCanMove( RIGHT ) ) {
       monkiJumps( RIGHT );
     }
   } else {
-    if ( pad1 & PAD_A ) monkiReaches();
-    if ( pad1 & PAD_LEFT && monkiCanMove( LEFT ) ) {
+    if ( player_one & PAD_A ) monkiReaches();
+    if ( player_one & PAD_LEFT && monkiCanMove( LEFT ) ) {
       monkiJumps( LEFT );
     }
   }
 
   if ( is_reaching ) return;
 
-  if (pad1 & PAD_UP && monkiCanMove( UP )) {
+  if (player_one & PAD_UP && monkiCanMove( UP )) {
+    monki_moving = TRUE;
     if ( game_frame % GAME_SPEED == 0 ) {
       frame( UP );
-      monkiMoves( UP, 8 );
+      monkiMoves( UP, 6 );
     }
   }
 
-  if (pad1 & PAD_DOWN && monkiCanMove( DOWN )) {
+  if (player_one & PAD_DOWN && monkiCanMove( DOWN )) {
+    monki_moving = TRUE;
     if ( game_frame % GAME_SPEED == 0 ) {
       frame( DOWN );
-      monkiMoves( DOWN, 8 );
+      monkiMoves( DOWN, 10 );
     }
   }
 }
 
 void frame( int direction ) {
-  if ( game_frame % ANIMATION_SPEED != 0 )
+  if ( game_frame - animation_frame < ANIMATION_SPEED )
     return;
 
+  animation_frame = game_frame;
+
   switch ( direction ) {
-    case UP:
-      monki_frame++;
-      break;
-    case DOWN:
-      monki_frame--;
-      break;
+    case UP:    monki_frame++;
+                break;
+
+    case DOWN:  monki_frame--;
+                break;
   }
 
   if ( monki_frame > 5 ) monki_frame = 0;
@@ -473,7 +586,7 @@ void frame( int direction ) {
 void scrolling( void ) {
   ++left_gap_y;
   ++right_gap_y;
-  monkiMoves( DOWN, 1 );
+  if ( !monki_moving ) monkiMoves( DOWN, 1 );
 }
 
 void clear_bg( void ) {
@@ -490,18 +603,23 @@ int randRange( int low, int high ){
 }
 
 int monkiCanMove( int direction ) {
-  temp1 = on_left_pole ? left_gap_y : right_gap_y;
-  temp2 = on_left_pole ? right_gap_y : left_gap_y;
+  if ( direction == UP || direction == DOWN )
+    temp1 = on_left_pole ? left_gap_y : right_gap_y;
+  else
+    temp2 = on_left_pole ? right_gap_y : left_gap_y;
 
   switch ( direction ) {
-    case UP:
-      return monki_y < temp1 + 8 || monki_y > temp1 + 16;
-    case DOWN:
-      return monki_y > temp1 + 8 || monki_y < temp1 - 40;
-    case RIGHT:
-    case LEFT:
-      return !( monki_y > ( temp2 - 42 ) && monki_y < temp2 + 0 );
+    case UP:    return monki_y < temp1 + 8 || monki_y > temp1 + 16;
+    case DOWN:  return monki_y > temp1 + 8 || monki_y < temp1 - 40;
+    case LEFT:  return !( monki_y > temp2 - 32 && monki_y < temp2 );
+    case RIGHT: return !( monki_y > temp2 - 48 && monki_y < temp2 - 8 );
   }
 
   return TRUE;
+}
+
+int compareScore(const void *a, const void *b) {
+  const Highscorer *highscoreA = (Highscorer*)a;
+  const Highscorer *highscoreB = (Highscorer*)b;
+  return -(highscoreA->score - highscoreB->score);
 }
