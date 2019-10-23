@@ -131,8 +131,6 @@ enum {
   REACHING_RIGHT
 };
 
-unsigned char initials[3]="AAA";
-
 unsigned char player_one;
 unsigned char temp1;
 unsigned char temp2;
@@ -190,7 +188,7 @@ typedef struct Highscorer {
 } Highscorer;
 
 struct Highscorer highscorers[5];
-
+unsigned char initials[3]="AAA";
 unsigned int highscores[5];
 
 // PROTOTYPES
