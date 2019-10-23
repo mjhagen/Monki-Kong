@@ -6,7 +6,6 @@
 #include "monki.h"
 
 void main( void ) {
-  upkeep();
   initGame();
 
   while( 1 ) {
@@ -22,6 +21,8 @@ void main( void ) {
 }
 
 void initGame( void ) {
+  upkeep();
+
   pal_bg(palette_bg);
   pal_spr(palette_sp);
 
@@ -324,7 +325,7 @@ void drawEnterInitials( void ) {
       oam_spr( 88 + ( i * 8 ), 140, initials[ i ], hs_pos == i ? 2 : 3 );
     }
 
-    highscorers[ leaderboard_pos ].score = score;
+    highscorers[ leaderboard_pos ].score = score - 0x30;
     highscorers[ leaderboard_pos ].initials = initials;
   }
 }
@@ -492,7 +493,7 @@ void hasHighscore( void ) {
   leaderboard_pos = 6;
 
   for( i=0; i<5; i++ ) {
-    if( score > highscorers[ i ].score ) {
+    if( (score - 0x30) > highscorers[ i ].score ) {
       leaderboard_pos = i;
     }
   }
