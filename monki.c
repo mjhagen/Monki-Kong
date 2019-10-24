@@ -28,11 +28,17 @@ void initGame( void ) {
 
   is_gameover = TRUE;
 
-  highscorers[0].initials="BEN"; highscorers[0].score=40;
-  highscorers[1].initials="MJH"; highscorers[1].score=30;
-  highscorers[2].initials="HAN"; highscorers[2].score=20;
-  highscorers[3].initials="JIR"; highscorers[3].score=10;
-  highscorers[4].initials="CAH"; highscorers[4].score=5;
+  strncpy( highscorers[0].initials, "BEN\0", 3 );
+  strncpy( highscorers[1].initials, "MJH\0", 3 );
+  strncpy( highscorers[2].initials, "HAN\0", 3 );
+  strncpy( highscorers[3].initials, "JIR\0", 3 );
+  strncpy( highscorers[4].initials, "CAH\0", 3 );
+
+  highscorers[0].score=40;
+  highscorers[1].score=30;
+  highscorers[2].score=20;
+  highscorers[3].score=10;
+  highscorers[4].score=5;
 }
 
 // game modes
@@ -100,8 +106,6 @@ void runGame( void ) {
   drawGaps();
   drawObjects();
   drawMonki();
-
-  // gray_line();
 }
 
 void gameover( void ) {
@@ -290,7 +294,8 @@ void drawLeaderboard( void ) {
   y = 16;
   for ( i = 0; i<5; i++ ) {
     y+=2;
-    multi_vram_buffer_horz( highscorers[ i ].initials, 3, NTADR_A(11,y));
+    strncpy( temp1, highscorers[ i ].initials, 3 );
+    multi_vram_buffer_horz( temp1, 3, NTADR_A( 11, y ) );
     drawNumbersToBg( 20, y, highscorers[ i ].score );
   }
 }
@@ -322,11 +327,15 @@ void drawEnterInitials( void ) {
     for ( i = 0; i<3; i++ ) {
       if ( hs_pos == i && game_frame % 6 == 0 )
         continue;
+
       oam_spr( 88 + ( i * 8 ), 140, initials[ i ], hs_pos == i ? 2 : 3 );
     }
 
+    initials[3]="\0";
+
     highscorers[ leaderboard_pos ].score = score - 0x30;
-    highscorers[ leaderboard_pos ].initials = initials;
+
+    strncpy( highscorers[ leaderboard_pos ].initials, initials, 3 );
   }
 }
 

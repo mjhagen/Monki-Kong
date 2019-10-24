@@ -183,12 +183,12 @@ struct Object {
 struct Object objects[64];
 
 typedef struct Highscorer {
-  unsigned int score;
-  unsigned char *initials;
+  int score;
+  char initials[4];
 } Highscorer;
 
 struct Highscorer highscorers[5];
-unsigned char initials[3]="AAA";
+unsigned char initials[4]="AAA\0";
 unsigned int highscores[5];
 
 // PROTOTYPES
