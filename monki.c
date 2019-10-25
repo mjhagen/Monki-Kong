@@ -290,7 +290,7 @@ void drawObjects( void ) {
 }
 
 void drawLeaderboard( void ) {
-  qsort( &highscorers, 5, sizeof(Highscorer), compareScore );
+  qsort( &highscorers, 6, sizeof(Highscorer), compareScore );
   y = 16;
   for ( i = 0; i<5; i++ ) {
     y+=2;
@@ -333,9 +333,9 @@ void drawEnterInitials( void ) {
 
     initials[3]="\0";
 
-    highscorers[ leaderboard_pos ].score = score - 0x30;
+    highscorers[ 5 ].score = score - 0x30;
 
-    strncpy( highscorers[ leaderboard_pos ].initials, initials, 3 );
+    strncpy( highscorers[ 5 ].initials, initials, 3 );
   }
 }
 
