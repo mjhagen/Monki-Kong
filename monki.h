@@ -1,11 +1,10 @@
+#pragma bss-name(push, "ZEROPAGE")
+
 #include "HERO/monki_climb.c"
 #include "HERO/monki_jump.c"
 #include "HERO/monki_reach.c"
-#include "MAPS/poles_01.c"
-#include "MAPS/poles_02.c"
+#include "playfield.c"
 #include "title.c"
-
-#pragma bss-name(push, "ZEROPAGE")
 
 // LIVES / SCORE / TIMER:
 #define START_TIMER     0x58
@@ -39,10 +38,10 @@ unsigned char SCORE_TEXT[] = "SCORE:";
 
 // color palettes
 unsigned char palette_sp[]={
-  0x0F, 0x02, 0x21, 0x27, // blues
-  0x0F, 0x06, 0x36, 0x16, // reds
-  0x0F, 0x19, 0x29, 0x16, // greens
-  0x0F, 0x0F, 0x06, 0x30  // match bg colors
+  0x0F, 0x02, 0x21, 0x27,
+  0x0F, 0x06, 0x36, 0x16,
+  0x0F, 0x19, 0x29, 0x16,
+  0x0F, 0x0F, 0x06, 0x30
 };
 
 unsigned char palette_bg[]={
@@ -74,8 +73,8 @@ const unsigned char *titles[] = {
   title_row_6
 };
 
-const unsigned char *Poles[] = {
-  Poles1, Poles2
+const unsigned char *poles[] = {
+  left_pole, right_pole
 };
 
 // first arg is object type, second arg is color:
@@ -134,6 +133,7 @@ enum {
 unsigned char player_one;
 unsigned char temp1;
 unsigned char temp2;
+unsigned char *temp3;
 
 unsigned char lives=START_LIVES;
 unsigned char score=START_SCORE;
@@ -150,6 +150,7 @@ unsigned int x;
 unsigned int y;
 unsigned int i;
 unsigned int j;
+unsigned int nr;
 unsigned int hs_letter;
 unsigned int hs_pos;
 unsigned int game_mode=TITLE;
@@ -183,8 +184,8 @@ struct Object {
 struct Object objects[64];
 
 typedef struct Highscorer {
-  int score;
-  char initials[4];
+  unsigned int score;
+  unsigned char initials[4];
 } Highscorer;
 
 struct Highscorer highscorers[5];
@@ -197,32 +198,27 @@ void drawGaps( void );
 void drawLeaderboard( void );
 void drawMonki( void );
 void drawNumbers( char x, char y, char nr );
-void drawNumbersToBg( int x, int y, int nr );
+void drawNumbersToBg();
 void drawObjects( void );
 void drawPlayfield( void );
 void drawScoreboard( void );
-void drawStaticPoles( int left, int right );
-
+void drawStaticPoles();
 void monkiDies( void );
 void monkiGrabs( void );
 void monkiJumps( int direction );
 void monkiMoves( int direction, int amount );
-
 void titleScreen( void );
 void startGame( void );
 void runGame( void );
 void pauseGame( void );
 void gameover( void );
-
 void initGame( void );
 void setupObjects( void );
-
 void updateMonkiState( void );
 void updateMovement( void );
 void updateScroll( void );
 void updateTimer( void );
 void upkeep( void );
-
 void frame( int direction );
 void hasHighscore( void );
 void clear_bg( void );

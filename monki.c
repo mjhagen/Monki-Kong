@@ -6,10 +6,15 @@
 #include "monki.h"
 
 void main( void ) {
+  ppu_off();
+  pal_bright(0);
   initGame();
 
   while( 1 ) {
+    ppu_wait_nmi();
+
     upkeep();
+
     switch( game_mode ) {
       case TITLE:     titleScreen();  break;
       case STARTGAME: startGame();    break;
@@ -17,22 +22,19 @@ void main( void ) {
       case PAUSE:     pauseGame();    break;
       case GAMEOVER:  gameover();     break;
     }
+
+    gray_line();
   }
 }
 
 void initGame( void ) {
-  upkeep();
-
-  pal_bg(palette_bg);
-  pal_spr(palette_sp);
-
   is_gameover = TRUE;
 
-  strncpy( highscorers[0].initials, "BEN\0", 3 );
-  strncpy( highscorers[1].initials, "MJH\0", 3 );
-  strncpy( highscorers[2].initials, "HAN\0", 3 );
-  strncpy( highscorers[3].initials, "JIR\0", 3 );
-  strncpy( highscorers[4].initials, "CAH\0", 3 );
+  strncpy( highscorers[0].initials, "BEN\0", 4 );
+  strncpy( highscorers[1].initials, "MJH\0", 4 );
+  strncpy( highscorers[2].initials, "HAN\0", 4 );
+  strncpy( highscorers[3].initials, "JIR\0", 4 );
+  strncpy( highscorers[4].initials, "CAH\0", 4 );
 
   highscorers[0].score=40;
   highscorers[1].score=30;
@@ -48,41 +50,61 @@ void titleScreen( void ) {
     return;
   }
 
-  if ( is_gameover ) {
-    is_gameover = FALSE;
-
-    ppu_off();
-    clear_bg();
-
-    drawStaticPoles( 8*8, 8*23 );
-    set_music_speed( 6 );
-    music_play( 0 );
-
-    multi_vram_buffer_horz( GAMENAME_TEXT, sizeof( GAMENAME_TEXT ), NTADR_A(11,14) );
-    multi_vram_buffer_horz( "PRESS", sizeof( "PRESS" ), NTADR_A(2,14));
-    multi_vram_buffer_horz( "START", sizeof( "START" ), NTADR_A(25,14));
-
-    drawLeaderboard();
-    ppu_on_all();
+  if ( !is_gameover ) {
+    return;
   }
+
+  is_gameover = FALSE;
+
+  // SCREEN OFF:
+  ppu_off();
+
+  // PLAY MUSIC:
+  set_music_speed( 6 );
+  music_play( 0 );
+
+  // SETUP PALETTES:
+  pal_spr(palette_sp);
+  pal_bg(palette_bg);
+
+  // CLEAR BUFFERS:
+  oam_clear();
+
+  // CLEAR SCREEN
+  clear_bg();
+
+  // DRAW TITLE SCREEN:
+  vram_unrle(title_poles);
+  multi_vram_buffer_horz( "MONKI KONG\0", 11, NTADR_A(11,14) );
+  multi_vram_buffer_horz( "PRESS\0", 6, NTADR_A(2,14));
+  multi_vram_buffer_horz( "START\0", 6, NTADR_A(25,14));
   y =  10; for ( j = 6; j > 0; ) oam_meta_spr( 88, y+=14, titles[ --j ] );
   y = 112; for ( j = 0; j < 1; ) oam_meta_spr( 88, y+=14, titles[ j++ ] );
+  drawLeaderboard();
+
+  // SCREEN ON:
+  ppu_on_all();
+  pal_fade_to(0,4);
 }
 
 void startGame( void ) {
-  // reset game elements:
-  setupObjects();
+  game_mode = PLAYING;
 
+  // clear screen and draw playfield
   pal_fade_to(4,0);
-  set_music_speed( 6 );
-
+  ppu_off();
+  clear_bg();
+  oam_clear();
   drawPlayfield();
 
-  delay(10);
-  pal_bright(4);
+  // delay(10);
 
-  // set game mode for next frame:
-  game_mode = PLAYING;
+  // reset game elements:
+  setupObjects();
+  set_music_speed( 6 );
+
+  ppu_on_all();
+  pal_fade_to(0,4);
 }
 
 void runGame( void ) {
@@ -102,6 +124,8 @@ void runGame( void ) {
   updateTimer();
   updateMonkiState();
 
+  oam_clear();
+
   drawScoreboard();
   drawGaps();
   drawObjects();
@@ -112,23 +136,32 @@ void gameover( void ) {
   if ( !is_gameover ) {
     is_gameover = TRUE;
 
+    pal_fade_to(4,0);
+    ppu_off();
+
     music_stop();
     sfx_play( SFX_GAMEOVER, 0 );
 
+    oam_clear();
     clear_bg();
+
     pal_col( 0, 0x0F );
     multi_vram_buffer_horz( GAMEOVER_TEXT, sizeof( GAMEOVER_TEXT ), NTADR_A( 11, 14 ) );
     multi_vram_buffer_horz( SCORE_TEXT, sizeof( SCORE_TEXT ), NTADR_A( 11, 16 ) );
 
     hasHighscore();
 
+    ppu_on_all();
+    pal_fade_to(0,4);
+
     hs_pos = 0;
     key_down_frame = 0;
   }
 
+  oam_clear();
+
   // show final score:
   drawNumbers( 160, 128, score );
-
   drawEnterInitials();
 
   if ( player_one & PAD_START ) {
@@ -139,17 +172,24 @@ void gameover( void ) {
 }
 
 void pauseGame( void ) {
-  if ( player_one & PAD_START ) {
-    game_mode = PLAYING;
+  if ( !is_paused ) {
+    is_paused = TRUE;
+    ppu_off();
     delay( 10 );
+    clear_bg();
+    oam_clear();
+    multi_vram_buffer_horz(GAMEPAUSED_TEXT, sizeof(GAMEPAUSED_TEXT), NTADR_A(13,14));
+    ppu_on_all();
     return;
   }
 
-  if ( !is_paused ) {
-    is_paused = TRUE;
+  if ( player_one & PAD_START ) {
+    game_mode = PLAYING;
+    ppu_off();
+    delay( 10 );
     clear_bg();
-    multi_vram_buffer_horz(GAMEPAUSED_TEXT, sizeof(GAMEPAUSED_TEXT), NTADR_A(13,14));
-    delay( 6 );
+    ppu_on_all();
+    return;
   }
 }
 
@@ -201,10 +241,8 @@ void updateTimer( void ) {
 }
 
 void drawPlayfield( void ) {
-  clear_bg();
-  pal_col( 0, 0x0F );
   gap_color = 0x03;
-  drawStaticPoles( LEFT_POLE, RIGHT_POLE );
+  drawStaticPoles();
   multi_vram_buffer_horz( TIMER_TEXT, sizeof( TIMER_TEXT ), NTADR_A(1,1) );
   multi_vram_buffer_horz( LIVES_TEXT, sizeof( LIVES_TEXT ), NTADR_A(1,2) );
   multi_vram_buffer_horz( SCORE_TEXT, sizeof( SCORE_TEXT ), NTADR_A(1,3) );
@@ -229,37 +267,29 @@ void drawNumbers( char x, char y, char nr ) {
   if ( nr > 99 ) oam_spr( x -= 8, y, (( nr / 100 ) % 10) + 0x30, 0x03 );
 }
 
-void drawNumbersToBg( int x, int y, int nr ) {
-  //   1
-  temp1 = ( ( nr / 1 ) % 10 ) + 0x30;
+void drawNumbersToBg() {
   temp2 = 6;
-  one_vram_buffer( temp1, NTADR_A( x--, y ) );
+  one_vram_buffer( ( ( nr / 1 ) % 10 ) + 0x30, NTADR_A( x--, y ) );
 
-  //  10
   if ( nr > ( 10 - 1 ) ) {
-    temp1 = ( ( nr / 10 ) % 10 ) + 0x30;
-    temp2 = 5;
-    one_vram_buffer( temp1, NTADR_A( x--, y ) );
+    temp2--;
+    one_vram_buffer( ( ( nr / 10 ) % 10 ) + 0x30, NTADR_A( x--, y ) );
   }
 
-  // 100
   if ( nr > ( 100 - 1 ) ) {
-    temp1 = ( ( nr / 100 ) % 10 ) + 0x30;
-    temp2 = 4;
-    one_vram_buffer( temp1, NTADR_A( x--, y ) );
+    temp2--;
+    one_vram_buffer( ( ( nr / 100 ) % 10 ) + 0x30, NTADR_A( x--, y ) );
   }
 
   multi_vram_buffer_horz( "......", temp2, NTADR_A( x-=(temp2-1), y ) );
 }
 
-void drawStaticPoles( int left, int right ) {
-  pal_col( 0, 0x0F );
-
+void drawStaticPoles() {
   left_gap_y = 0x10;
   right_gap_y = 0x78;
-
-  multi_vram_buffer_vert( Poles[0], 30, get_ppu_addr( 0, left, 0 ) );
-  multi_vram_buffer_vert( Poles[1], 30, get_ppu_addr( 0, right, 0 ) );
+  pal_col( 0, 0x0F );
+  multi_vram_buffer_vert( poles[0], 30, get_ppu_addr( 0, LEFT_POLE, 0 ) );
+  multi_vram_buffer_vert( poles[1], 30, get_ppu_addr( 0, RIGHT_POLE, 0 ) );
 }
 
 void drawGaps( void ) {
@@ -292,11 +322,13 @@ void drawObjects( void ) {
 void drawLeaderboard( void ) {
   qsort( &highscorers, 6, sizeof(Highscorer), compareScore );
   y = 16;
-  for ( i = 0; i<5; i++ ) {
-    y+=2;
-    strncpy( temp1, highscorers[ i ].initials, 3 );
-    multi_vram_buffer_horz( temp1, 3, NTADR_A( 11, y ) );
-    drawNumbersToBg( 20, y, highscorers[ i ].score );
+  for ( i=0; i<5; i++ ) {
+    y = y + 2;
+    strncpy( temp3, highscorers[ i ].initials, 3 );
+    multi_vram_buffer_horz( temp3, 3, NTADR_A( 11, y ) );
+    x = 20;
+    nr = highscorers[ i ].score;
+    drawNumbersToBg();
   }
 }
 
@@ -510,15 +542,11 @@ void hasHighscore( void ) {
 
 // house keeping
 void upkeep( void ) {
-  ppu_wait_nmi();
-
+  clear_vram_buffer();
+  set_vram_buffer();
   game_frame++;
   monki_moving = FALSE;
   player_one = pad_poll( 0 ); // read the first controller
-
-  clear_vram_buffer();
-  set_vram_buffer();
-  oam_clear();
 }
 
 void updateMovement( void ) {
@@ -584,10 +612,8 @@ void updateScroll( void ) {
 }
 
 void clear_bg( void ) {
-  ppu_off();
   vram_adr(NAMETABLE_A);
-  vram_fill(0,1024); // blank the screen
-  ppu_on_all();
+  vram_fill(0,1024);
 }
 
 // utility

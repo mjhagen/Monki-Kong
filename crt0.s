@@ -261,10 +261,10 @@ detectNTSC:
 music_data:
 	.include "MUSIC/music.s"
 
-	.if(FT_SFX_ENABLE)
-sounds_data:
+.if(FT_SFX_ENABLE)
+  sounds_data:
 	.include "MUSIC/sounds.s"
-	.endif
+.endif
 
 
 
