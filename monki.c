@@ -22,8 +22,6 @@ void main( void ) {
       case PAUSE:     pauseGame();    break;
       case GAMEOVER:  gameover();     break;
     }
-
-    gray_line();
   }
 }
 
@@ -335,7 +333,7 @@ void drawLeaderboard( void ) {
 void drawEnterInitials( void ) {
   if ( leaderboard_pos < 6 ) {
     // enter high score initials:
-    if ( key_down_frame == 0 || game_frame - key_down_frame > 3 )
+    if ( key_down_frame == 0 || game_frame - key_down_frame > 5 )
       key_down = FALSE;
 
     if ( !key_down ) {
@@ -363,7 +361,7 @@ void drawEnterInitials( void ) {
       oam_spr( 88 + ( i * 8 ), 140, initials[ i ], hs_pos == i ? 2 : 3 );
     }
 
-    initials[3]="\0";
+    initials[3] = 0x00;
 
     highscorers[ 5 ].score = score - 0x30;
 
