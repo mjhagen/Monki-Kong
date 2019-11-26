@@ -1,5 +1,4 @@
 #include <string.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include "LIB/neslib.h"
 #include "LIB/nesdoug.h"
@@ -515,17 +514,18 @@ void monkiJumps( int direction ) {
 }
 
 void monkiDies( void ) {
-  lives--;
-  monkiMoves( TOP, 0 );
+  sfx_play( SFX_DEATH, 0 );
   pal_col( 0, 0x06 );
-  delay( 15 );
+  gap_color = 0x01;
 
-  if ( lives < ZERO_LIVES ) {
+  if ( --lives < ZERO_LIVES ) {
     game_mode = GAMEOVER;
     return;
   }
 
-  sfx_play( SFX_DEATH, 0 );
+  monkiMoves( TOP, 0 );
+
+  delay( 15 );
 }
 
 void hasHighscore( void ) {
