@@ -78,7 +78,8 @@ const unsigned char *poles[] = {
 };
 
 // first arg is object type, second arg is color:
-unsigned char object_types[11][2]={
+const int number_of_object_types = 12;
+unsigned char object_types[12][2]={
   { 0x91, 0x01 }, // Adam
   { 0x90, 0x01 }, // 1up
   { 0xA0, 0x01 }, // casette
@@ -90,6 +91,7 @@ unsigned char object_types[11][2]={
   { 0xC5, 0x01 }, // TENT
   { 0xC6, 0x00 }, // LAMP2
   { 0xA1, 0x02 }, // diabolo
+  { 0xD3, 0x00 }, // walkman
 };
 
 // MOVEMENT:

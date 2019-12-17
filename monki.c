@@ -123,6 +123,10 @@ void runGame( void ) {
 
   oam_clear();
 
+  // reset colors every frame
+  pal_col( 0, 0x0F );
+  gap_color = 0x03;
+
   drawScoreboard();
   drawGaps();
   drawObjects();
@@ -219,13 +223,10 @@ void updateTimer( void ) {
     return;
   }
 
-  pal_col( 0, 0x0F );
-  gap_color = 0x03;
-
   if ( timer <= 0x35 ) {
-    set_music_speed( 4 );
     pal_col( 0, 0x06 );
     gap_color = 0x01;
+    set_music_speed( 4 );
   } else if ( timer <= 0x3A ) {
     set_music_speed( 5 );
   } else {
@@ -238,7 +239,6 @@ void updateTimer( void ) {
 }
 
 void drawPlayfield( void ) {
-  gap_color = 0x03;
   drawStaticPoles();
   multi_vram_buffer_horz( TIMER_TEXT, sizeof( TIMER_TEXT ), NTADR_A(1,1) );
   multi_vram_buffer_horz( LIVES_TEXT, sizeof( LIVES_TEXT ), NTADR_A(1,2) );
@@ -284,7 +284,6 @@ void drawNumbersToBg() {
 void drawStaticPoles() {
   left_gap_y = 0x10;
   right_gap_y = 0x78;
-  pal_col( 0, 0x0F );
   multi_vram_buffer_vert( poles[0], 30, get_ppu_addr( 0, LEFT_POLE, 0 ) );
   multi_vram_buffer_vert( poles[1], 30, get_ppu_addr( 0, RIGHT_POLE, 0 ) );
 }
@@ -304,7 +303,7 @@ void drawObjects( void ) {
   if ( game_frame % 75 == 0 ) {
     active_object = randRange( 0, 63 );
     objects[ active_object ].grabbed = FALSE;
-    objects[ active_object ].type = randRange( 0, 10 );
+    objects[ active_object ].type = randRange( 0, number_of_object_types-1 );
   }
 
   if ( objects[ active_object ].grabbed == TRUE )

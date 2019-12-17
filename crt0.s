@@ -11,20 +11,13 @@ FT_THREAD       = 1		;undefine if you call sound effects in the same thread as s
 FT_PAL_SUPPORT	= 1		;undefine to exclude PAL support
 FT_NTSC_SUPPORT	= 1		;undefine to exclude NTSC support
 FT_DPCM_ENABLE  = 0		;undefine to exclude all DMC code
-FT_SFX_ENABLE   = 1		;undefine to exclude all sound effects code
+  FT_SFX_ENABLE   = 1		;undefine to exclude all sound effects code
 
+  .export _exit,__STARTUP__:absolute=1
+  .import push0,popa,popax,_main,zerobss,copydata
 
-
-
-
-;REMOVED initlib
-;this called the CONDES function
-
-    .export _exit,__STARTUP__:absolute=1
-	.import push0,popa,popax,_main,zerobss,copydata
-
-; Linker generated symbols
-	.import __STACK_START__   ,__STACKSIZE__ ;changed
+    ; Linker generated symbols
+  .import __STACK_START__   ,__STACKSIZE__ ;changed
 	.import __ROM0_START__  ,__ROM0_SIZE__
 	.import __STARTUP_LOAD__,__STARTUP_RUN__,__STARTUP_SIZE__
 	.import	__CODE_LOAD__   ,__CODE_RUN__   ,__CODE_SIZE__
@@ -197,14 +190,11 @@ clearRAM:
     lda	#>(__STACK_START__+__STACKSIZE__)
     sta	sp+1            ; Set argument stack ptr
 
-;	jsr	initlib
-; removed. this called the CONDES function
-
-	lda #%10000000
-	sta <PPU_CTRL_VAR
-	sta PPU_CTRL		;enable NMI
-	lda #%00000110
-	sta <PPU_MASK_VAR
+    lda #%10000000
+    sta <PPU_CTRL_VAR
+    sta PPU_CTRL		;enable NMI
+    lda #%00000110
+    sta <PPU_MASK_VAR
 
 waitSync3:
 	lda <FRAME_CNT1
